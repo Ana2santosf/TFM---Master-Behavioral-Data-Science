@@ -587,6 +587,8 @@ cat("Resultados del análisis por liga exportados correctamente a Excel.\n")
 # Crear un libro de trabajo para los resultados de regresiones
 wb_regresion <- createWorkbook()
 
+# 6.5.1. REGRESIONES POR POSICIÓN
+
 # Crear modelo de regresión para cada posición
 for (position in unique(datos$teamPosition)) {
   cat("\nModelo de regresión para la posición:", position, "\n")
@@ -612,6 +614,8 @@ for (position in unique(datos$teamPosition)) {
   }
 }
 
+
+# 6.5.2. REGRESIONES POR LIGAS
 # Crear modelo de regresión para cada liga
 for (liga in unique(datos$League)) {
   cat("\nModelo de regresión para la liga:", liga, "\n")
