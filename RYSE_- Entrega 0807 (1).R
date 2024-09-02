@@ -19,18 +19,18 @@ install_and_load <- function(package) {
   }
 }
 
-# Lista de bibliotecas necesarias
+# Lista de liberias necesarias
 libraries <- c("tidyverse", "GGally", "caret", "plm", "ggplot2", "readxl", "openxlsx", "psych", "pls")
 
-# Ejecutar la función para cada biblioteca en la lista
+# Ejecutar la función para cada libreria en la lista
 lapply(libraries, install_and_load)
 
 # SECCION 1: LECTURA DE LOS DATOS
 
-# Cargamos la BBDD
-datos <- read_excel("C:/Users/User/Downloads/RYSE NETOS VERSION A.xlsx")
+# Cargar la BBDD
+datos <- read_excel("Copia de RYSE NETOS VERSION A (3).xlsx")
 
-# Verificamos que los datos se hayan cargado correctamente
+# Verificar que los datos se hayan cargado correctamente
 head(datos)
 
 
