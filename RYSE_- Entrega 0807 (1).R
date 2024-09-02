@@ -20,7 +20,7 @@ install_and_load <- function(package) {
 }
 
 # Lista de liberias necesarias
-libraries <- c("tidyverse", "GGally", "caret", "plm", "ggplot2", "readxl", "openxlsx", "psych", "pls")
+libraries <- c("tidyverse", "GGally", "caret", "plm", "ggplot2", "readxl", "openxlsx", "psych", "pls", "here")
 
 # Ejecutar la función para cada libreria en la lista
 lapply(libraries, install_and_load)
@@ -129,11 +129,32 @@ if (length(cols_mean) > 0) {
   cat("No se encontraron columnas que terminan en '.mean'\n")
 }
 
+# Crear un histograma de la distribución de player.WR (nos damos cuenta que hay winrates de 0 y 1, lo cual es raro, ademas de otros cercanos a 0.75, tambien raro)
+ggplot(datos, aes(x = player.WR)) +
+  geom_histogram(binwidth = 0.05, fill = "blue", color = "black", alpha = 0.7) +
+  labs(title = "Histograma de la distribución de player.WR",
+       x = "Win Rate del Jugador (player.WR)",
+       y = "Frecuencia") +
+  theme_minimal()
 
-# Calcular el número de partidas para cada jugador
+# Calcular el número de partidas para cada jugador (datos originales)
 partidas_por_jugador <- datos %>%
   group_by(summonerName) %>%
   summarise(num_partidas = n())
+print(partidas_por_jugador)
+
+# Crear un histograma del número de partidas por jugador (vemos que hay una observacion atipica de 150+ partidas jugadas)
+ggplot(partidas_por_jugador, aes(x = num_partidas)) +
+  geom_histogram(binwidth = 1, fill = "blue", color = "black", alpha = 0.7) +
+  labs(title = "Histograma del Número de Partidas por Jugador",
+       x = "Número de Partidas",
+       y = "Frecuencia") +
+  theme_minimal()
+
+# Encontrar los jugadores con más de 100 partidas
+jugadores_mas_de_100 <- partidas_por_jugador %>%
+  filter(num_partidas > 100) %>%
+  pull(summonerName)
 
 # Crear tablas de frecuencias absolutas y relativas para variables categóricas
 freq_abs_rel <- lapply(variables_categoricas, function(var) {
@@ -142,9 +163,9 @@ freq_abs_rel <- lapply(variables_categoricas, function(var) {
   list(freq_abs = freq_abs, freq_rel = freq_rel)
 })
 
-# Filtrar los jugadores extremos
+# Filtrar los jugadores extremos (los que tienen WinRate 0 y 1,asi como el/los que tienen 150+ partidas jugadas)
 jugadores_WR_extremos <- datos_agrupados %>%
-  filter(player.WR.mean == 0 | player.WR.mean == 1)
+  filter((player.WR.mean == 0 | player.WR.mean == 1) | summonerName %in% jugadores_mas_de_100)
 
 nombres_jugadores_WR_extremos <- jugadores_WR_extremos$summonerName
 
@@ -159,9 +180,12 @@ partidas_extremos <- partidas_por_jugador %>%
 partidas_no_extremos <- partidas_por_jugador %>%
   filter(!summonerName %in% nombres_jugadores_WR_extremos)
 
-# Comparamos el número de partidas de los jugadores extremos con los demás
+# Comparamos el número de partidas de los jugadores extremos con los demás: son 13 partidas de media vs 67 partidas
 mean_partidas_extremos <- mean(partidas_extremos$num_partidas)
 mean_partidas_no_extremos <- mean(partidas_no_extremos$num_partidas)
+
+print(mean_partidas_extremos)
+print(mean_partidas_no_extremos)
 
 # Recalcular estadísticas agrupadas sin jugadores extremos
 datos_agrupados_filtrados <- datos_filtrados %>%
@@ -196,16 +220,45 @@ desc_stats_agrupadas <- datos_agrupados_filtrados %>%
 print(desc_stats_agrupadas)
 
 
+# Tras volver a mirar el histograma de partidas jugadas, queremos ver la distribucion de Player.WR entre los jugadores con menos de o igual a 50 partidas
+
 # Filtrar los jugadores con más de 50 partidas
 jugadores_mas_de_50 <- partidas_por_jugador %>%
   filter(num_partidas > 50) %>%
   pull(summonerName)
 
-# Datos filtrados
+# Filtrar los jugadores con más de 50 partidas
+jugadores_menos_igual_50 <- partidas_por_jugador %>%
+  filter(num_partidas <= 50) %>%
+  pull(summonerName)
+
+# Datos filtrados (jugadores con más de 50 partidas)
 datos_filtrados_50 <- datos %>%
   filter(summonerName %in% jugadores_mas_de_50)
 
-# Agrupar los datos filtrados por jugador y calcular estadísticas agregadas
+# Datos filtrados (jugadores con menos de o igual a 50 partidas)
+datos_menos_igual_50 <- datos_filtrados %>%
+  filter(summonerName %in% jugadores_menos_igual_50)
+
+# Crear un histograma de la distribución de 'player.WR' para jugadores con > 50 partidas
+ggplot(datos_filtrados_50, aes(x = player.WR)) +
+  geom_histogram(binwidth = 0.05, fill = "blue", color = "black", alpha = 0.7) +
+  labs(title = "Histograma de player.WR para jugadores con <= 50 partidas",
+       x = "Win Rate del Jugador (player.WR)",
+       y = "Frecuencia") +
+  theme_minimal()
+
+# Crear un histograma de la distribución de 'player.WR' para jugadores con <= 50 partidas
+ggplot(datos_menos_igual_50, aes(x = player.WR)) +
+  geom_histogram(binwidth = 0.05, fill = "blue", color = "black", alpha = 0.7) +
+  labs(title = "Histograma de player.WR para jugadores con <= 50 partidas",
+       x = "Win Rate del Jugador (player.WR)",
+       y = "Frecuencia") +
+  theme_minimal()
+
+# Concluimos de los histogramas que los jugadores con <=50 partidas tienen unos WinRates mas sospechosos, por tanto los excludimos y nos quedamos con los que tienen >50 partidas
+
+# Agrupar los datos filtrados por jugadores con más de 50 partidas y calcular estadísticas agregadas
 datos_agrupados_50 <- datos_filtrados_50 %>%
   group_by(summonerName) %>%
   summarise(across(all_of(variables_numericas),
@@ -258,6 +311,7 @@ print(desc_stats_filtrado_50)
 datos_agrupados_filtrados <- datos_agrupados_filtrados %>%
   rename_with(~ gsub("_mean", ".mean", .x)) %>%
   rename_with(~ gsub("_total", ".total", .x))
+
 
 # Análisis individualizado por liga
 analisis_por_liga <- datos_agrupados_filtrados %>%
@@ -356,8 +410,11 @@ for (var in variables_numericas) {
 
 # SECCION 5: EXPORTAR RESULTADOS A EXCEL
 
+# Definir la ruta del proyecto
+root <- find_root(is_git_root | is_rstudio_project)
+
 # Definir la ruta de guardado
-ruta <- "C:/Users/User/Downloads/"
+ruta <- file.path(root, "outputs")
 
 # Crear un nuevo libro de trabajo
 wb <- createWorkbook()
@@ -422,7 +479,7 @@ saveWorkbook(wb, file = paste0(ruta, "Resultados_Analisis_Descriptivo.xlsx"), ov
 # Mensaje de confirmación
 cat("Datos exportados correctamente a", paste0(ruta, "Resultados_Analisis_Descriptivo.xlsx"), "\n")
 
-# SECCION 6: ANÁLISIS ADICIONALES
+# SECCION 6: ANÁLISIS AVANZADOS
 
 # 6.1.
 # REDUCCIÓN DE LA DIMENSIONALIDAD (PCR)
