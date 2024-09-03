@@ -25,27 +25,27 @@ libraries <- c("tidyverse", "GGally", "caret", "plm", "ggplot2", "readxl", "open
 # Ejecutar la función para cada libreria en la lista
 lapply(libraries, install_and_load)
 
-# SECCION 1: LECTURA DE LOS DATOS
+#SECCION 1: LECTURA DE LOS DATOS
 
 # Cargar la BBDD
-datos <- read_excel("Copia de RYSE NETOS VERSION A (3).xlsx")
+datos_originales <- read_excel("Copia de RYSE NETOS VERSION A (3).xlsx")
 
 # Verificar que los datos se hayan cargado correctamente
-head(datos)
+head(datos_originales)
 
 
 # SECCION 2: ANALISIS DESCRIPTIVO
 
 # Calcular goldEarned por minuto
-datos <- datos %>%
+datos_originales <- datos_originales %>%
   mutate(goldEarnedPerMinute = goldEarned / (timePlayed / 60))
 
 # Renombrar la columna Player_WR a player.WR
-datos <- datos %>%
+datos_originales <- datos_originales %>%
   rename(player.WR = Player_WR)
 
 # Renombrar columnas con "_" a "."
-colnames(datos) <- gsub("_", ".", colnames(datos))
+colnames(datos_originales) <- gsub("_", ".", colnames(datos_originales))
 
 # Seleccionar variables de interés
 variables_numericas <- c("goldEarned", "kills", "deaths", "assists", "champExperience", "player.WR",
@@ -56,7 +56,7 @@ variables_numericas <- c("goldEarned", "kills", "deaths", "assists", "champExper
 variables_categoricas <- c("teamPosition", "role", "ELO", "League", "win")
 
 # Calcular estadísticas descriptivas para las variables originales
-desc_stats_original <- datos %>%
+desc_stats_original <- datos_originales %>%
   summarise(across(all_of(variables_numericas), list(mean = ~ mean(.x, na.rm = TRUE),
                                                      sd = ~ sd(.x, na.rm = TRUE),
                                                      min = ~ min(.x, na.rm = TRUE),
@@ -71,7 +71,7 @@ desc_stats_original <- datos %>%
 print(desc_stats_original)
 
 # Calcular estadísticas descriptivas para el oro ganado por minuto
-gold_per_min_stats <- datos %>%
+gold_per_min_stats <- datos_originales %>%
   summarise(goldEarnedPerMinute.mean = mean(goldEarnedPerMinute, na.rm = TRUE),
             goldEarnedPerMinute.sd = sd(goldEarnedPerMinute, na.rm = TRUE),
             goldEarnedPerMinute.min = min(goldEarnedPerMinute, na.rm = TRUE),
@@ -86,7 +86,7 @@ gold_per_min_stats <- datos %>%
 print(gold_per_min_stats)
 
 # Agrupar los datos por jugador y calcular estadísticas agregadas
-datos_agrupados <- datos %>%
+datos_agrupados <- datos_originales %>%
   group_by(summonerName) %>%
   summarise(across(all_of(variables_numericas),
                    list(mean = ~ mean(.x, na.rm = TRUE),
@@ -130,7 +130,7 @@ if (length(cols_mean) > 0) {
 }
 
 # Crear un histograma de la distribución de player.WR (nos damos cuenta que hay winrates de 0 y 1, lo cual es raro, ademas de otros cercanos a 0.75, tambien raro)
-ggplot(datos, aes(x = player.WR)) +
+ggplot(datos_originales, aes(x = player.WR)) +
   geom_histogram(binwidth = 0.05, fill = "blue", color = "black", alpha = 0.7) +
   labs(title = "Histograma de la distribución de player.WR",
        x = "Win Rate del Jugador (player.WR)",
@@ -138,7 +138,7 @@ ggplot(datos, aes(x = player.WR)) +
   theme_minimal()
 
 # Calcular el número de partidas para cada jugador (datos originales)
-partidas_por_jugador <- datos %>%
+partidas_por_jugador <- datos_originales %>%
   group_by(summonerName) %>%
   summarise(num_partidas = n())
 print(partidas_por_jugador)
@@ -170,7 +170,7 @@ jugadores_WR_extremos <- datos_agrupados %>%
 nombres_jugadores_WR_extremos <- jugadores_WR_extremos$summonerName
 
 # Filtrar los datos para eliminar jugadores extremos
-datos_filtrados <- datos %>%
+datos_filtrados <- datos_originales %>%
   filter(!summonerName %in% nombres_jugadores_WR_extremos)
 
 # Separamos los jugadores extremos de los demás
@@ -222,18 +222,19 @@ print(desc_stats_agrupadas)
 
 # Tras volver a mirar el histograma de partidas jugadas, queremos ver la distribucion de Player.WR entre los jugadores con menos de o igual a 50 partidas
 
+
 # Filtrar los jugadores con más de 50 partidas
 jugadores_mas_de_50 <- partidas_por_jugador %>%
   filter(num_partidas > 50) %>%
   pull(summonerName)
 
-# Filtrar los jugadores con más de 50 partidas
+# Filtrar los jugadores con menos de o igual a 50 partidas
 jugadores_menos_igual_50 <- partidas_por_jugador %>%
   filter(num_partidas <= 50) %>%
   pull(summonerName)
 
 # Datos filtrados (jugadores con más de 50 partidas)
-datos_filtrados_50 <- datos %>%
+datos_filtrados_50 <- datos_originales %>%
   filter(summonerName %in% jugadores_mas_de_50)
 
 # Datos filtrados (jugadores con menos de o igual a 50 partidas)
@@ -342,20 +343,13 @@ write.csv(analisis_por_liga, "analisis_por_liga.csv", row.names = FALSE)
 
 # Análisis de correlación
 variables_bivariadas_mean <- paste0(c("goldEarned", "kills", "deaths", "assists", "champExperience", "totalDamageDealtToChampions"), ".mean")
-cor_matrix <- cor(select(datos_agrupados, all_of(variables_bivariadas_mean)), use = "complete.obs")
+cor_matrix <- cor(select(datos_agrupados_50, all_of(variables_bivariadas_mean)), use = "complete.obs")
 
 # Visualización de la matriz de correlación
-ggcorr(select(datos_agrupados, all_of(variables_bivariadas_mean)), label = TRUE)
+ggcorr(select(datos_agrupados_50, all_of(variables_bivariadas_mean)), label = TRUE)
 
 # SECCION 4: VISUALIZACION DE DATOS (HISTOGRAMAS Y BOXPLOTS)
 
-# Definir la ruta de guardado
-ruta <- "C:/Users/User/Downloads/"
-
-# Verificar si la ruta existe, si no, crearla
-if (!dir.exists(ruta)) {
-  dir.create(ruta)
-}
 
 # Crear histogramas para variables numéricas agrupadas (media)
 for (var in variables_numericas) {
@@ -409,12 +403,6 @@ for (var in variables_numericas) {
 
 
 # SECCION 5: EXPORTAR RESULTADOS A EXCEL
-
-# Definir la ruta del proyecto
-root <- find_root(is_git_root | is_rstudio_project)
-
-# Definir la ruta de guardado
-ruta <- file.path(root, "outputs")
 
 # Crear un nuevo libro de trabajo
 wb <- createWorkbook()
@@ -492,7 +480,7 @@ cat("Datos exportados correctamente a", paste0(ruta, "Resultados_Analisis_Descri
 # REDUCCIÓN DE LA DIMENSIONALIDAD (PCR)
 
 # Preparar datos para PCR
-predictors <- select(datos_filtrados, assists, kills, deaths, champExperience, turretKills,
+predictors <- select(datos_filtrados_50, assists, kills, deaths, champExperience, turretKills,
                      totalMinionsKilled, totalTimeCCDealt, baronKills, dragonKills,
                      totalDamageDealt, totalDamageTaken, totalDamageDealtToChampions,
                      damageDealtToObjectives)
@@ -606,10 +594,10 @@ cat("Resultados del análisis por posición exportados correctamente a Excel.\n"
 wb_liga <- createWorkbook()
 
 # Analizar rendimiento por liga
-for (liga in unique(datos$League)) {
+for (liga in unique(datos_originales$League)) {
   cat("\nAnálisis para la liga:", liga, "\n")
   
-  datos_liga <- datos %>% filter(League == liga)
+  datos_liga <- datos_originales %>% filter(League == liga)
   
   if (nrow(datos_liga) > 0) {
     summary_stats <- datos_liga %>% summarise(across(all_of(variables_numericas), list(mean = ~ mean(.x, na.rm = TRUE),
@@ -654,10 +642,10 @@ wb_regresion <- createWorkbook()
 # 6.5.1. REGRESIONES POR POSICIÓN
 
 # Crear modelo de regresión para cada posición
-for (position in unique(datos$teamPosition)) {
+for (position in unique(datos_originales$teamPosition)) {
   cat("\nModelo de regresión para la posición:", position, "\n")
   
-  datos_posicion <- datos %>% filter(teamPosition == position)
+  datos_posicion <- datos_originales %>% filter(teamPosition == position)
   
   if (nrow(datos_posicion) > 0) {
     # Regresión múltiple
@@ -681,10 +669,10 @@ for (position in unique(datos$teamPosition)) {
 
 # 6.5.2. REGRESIONES POR LIGAS
 # Crear modelo de regresión para cada liga
-for (liga in unique(datos$League)) {
+for (liga in unique(datos_originales$League)) {
   cat("\nModelo de regresión para la liga:", liga, "\n")
   
-  datos_liga <- datos %>% filter(League == liga)
+  datos_liga <- datos_originales %>% filter(League == liga)
   
   if (nrow(datos_liga) > 0) {
     # Regresión múltiple
