@@ -479,6 +479,13 @@ saveWorkbook(wb, file = paste0(ruta, "Resultados_Analisis_Descriptivo.xlsx"), ov
 # Mensaje de confirmación
 cat("Datos exportados correctamente a", paste0(ruta, "Resultados_Analisis_Descriptivo.xlsx"), "\n")
 
+
+
+
+
+
+
+
 # SECCION 6: ANÁLISIS AVANZADOS
 
 # 6.1.
