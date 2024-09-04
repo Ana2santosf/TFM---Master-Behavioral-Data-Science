@@ -540,6 +540,32 @@ ggplot(goldEarned_cumulative_quarter_subconjunto, aes(x = quarter, y = goldEarne
        y = "Oro Acumulado") +
   theme_minimal()
 
+#### EJEMPLO DE CLUSTERING
+
+# Wide format para que pueda operar el paquete kml3d
+BD.kml <- goldEarned_cumulative_quarter %>%  
+  gather(variable, value, -(summonerName:quarter)) %>%
+  unite(temp,variable,quarter) %>% 
+  spread(temp, value)
+
+# Crear objeto para los clusterings longitudinales y base de datos resultante
+cldGE <- cld3d(data.frame(BD.kml),timeInData= list(goldearned=2:5))
+kml3d(cldGE,nbRedrawing=50) # Guarda las trayectorias en cldGE
+
+# Estudiar performance de las distintas soluciones según nº de particiones
+load('cldGE.Rdata')
+
+listPart <- listPartition()
+listPart['criterionActif'] <-CRITERION_NAMES[1]
+for(i in 2:5){
+  listPart["add"] <- partition(getClusters(cldGE, i),cldGE)
+  ordered(listPart)
+}
+
+plotAllCriterion(listPart) # Parece que en 3 de 5 criterios 5 particiones es mejor...
+
+# Cómo guardar pertenencia al cluster según solución escogida como óptima
+BD.kml$clusters <- getClusters(cldGE, 5)
 
 
 
