@@ -352,6 +352,7 @@ ggcorr(select(datos_agrupados_50, all_of(variables_bivariadas_mean)), label = TR
 
 
 # Crear histogramas para variables numéricas agrupadas (media)
+## OJO el objeto RUTA no se ha declarado##
 for (var in variables_numericas) {
   var_mean <- paste0(var, ".mean")
   if (var_mean %in% colnames(datos_agrupados_filtrados)) {
