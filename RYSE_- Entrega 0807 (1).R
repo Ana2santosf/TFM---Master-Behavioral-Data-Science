@@ -485,7 +485,8 @@ predictors <- select(datos_filtrados_50, assists, kills, deaths, champExperience
                      totalMinionsKilled, totalTimeCCDealt, baronKills, dragonKills,
                      totalDamageDealt, totalDamageTaken, totalDamageDealtToChampions,
                      damageDealtToObjectives)
-response <- datos_filtrados$goldEarned
+## Datos_filtrados_50 y no datos_filtrados para que no de error...
+response <- datos_filtrados_50$goldEarned
 
 # Crear modelo de PCR
 pcr_model <- pcr(response ~ ., data = as.data.frame(predictors), scale = TRUE, validation = "CV")
