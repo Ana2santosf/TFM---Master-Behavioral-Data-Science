@@ -424,20 +424,20 @@ for (var in variables_numericas) {
 wb <- createWorkbook()
 
 # Pestaña 1: Estadísticas descriptivas originales
-addWorksheet(wb, "Estadísticas sin agrupar con datos originales")
-writeData(wb, "Estadísticas sin agrupar con datos originales", desc_stats_original, startCol = 1, startRow = 1)
+addWorksheet(wb, "Estadísticas datos originales")
+writeData(wb, "Estadísticas datos originales", desc_stats_original, startCol = 1, startRow = 1)
 
 # Pestaña 2: Datos agrupados finales
 addWorksheet(wb, "Datos agrupados")
 writeData(wb, "Datos agrupados", datos_agrupados_finales %>% select(summonerName, everything()), startCol = 1, startRow = 1)
 
 # Pestaña 3: Estadísticas descriptivas agrupadas (datos con filtraje final)
-addWorksheet(wb, "Estadísticas agrupadas con datos filtrados")
-writeData(wb, "Estadísticas agrupadas con datos filtrados", desc_stats_agrupados_filtrado_final, startCol = 1, startRow = 1)
+addWorksheet(wb, "Estad. agrupadas filtradas")
+writeData(wb, "Estad. agrupadas filtradas", desc_stats_agrupados_filtrado_final, startCol = 1, startRow = 1)
 
 # Pestaña 4: Partidas por jugador (datos originales)
-addWorksheet(wb, "Partidas por jugador en datos originales")
-writeData(wb, "Partidas por jugador en datos originales", partidas_por_jugador, startCol = 1, startRow = 1)
+addWorksheet(wb, "Partidas por jugador")
+writeData(wb, "Partidas por jugador", partidas_por_jugador, startCol = 1, startRow = 1)
 
 # Pestaña 5: Frecuencias absolutas y relativas de variables categóricas
 for (i in seq_along(variables_categoricas)) {
@@ -470,8 +470,8 @@ addWorksheet(wb, "Desc. sin agrupar ni filtrar")
 writeData(wb, "Desc. sin agrupar ni filtrar", desc_stats_original, startCol = 1, startRow = 1)
 
 # Pestaña 10: Estadísticas descriptivas agrupadas y filtradas (sin extremos y con jugadores >50 partidas)
-addWorksheet(wb, "Desc. agrupadas con filtrado final")
-writeData(wb, "Desc. agrupadas con filtrado fina", desc_stats_agrupados_filtrado_final, startCol = 1, startRow = 1)
+addWorksheet(wb, "Desc. agrup. filtrado final")
+writeData(wb, "Desc. agrup. filtrado final", desc_stats_agrupados_filtrado_final, startCol = 1, startRow = 1)
 
 # Pestaña 11: Análisis individualizado por liga
 addWorksheet(wb, "Análisis por liga")
@@ -500,6 +500,7 @@ predictors <- select(datos_filtrados_mas_de_50, assists, kills, deaths, champExp
                      totalMinionsKilled, totalTimeCCDealt, baronKills, dragonKills,
                      totalDamageDealt, totalDamageTaken, totalDamageDealtToChampions,
                      damageDealtToObjectives)
+
 ## datos_filtrados_mas_de_50 y no datos_sin_extremos para que no de error...
 response <- datos_filtrados_mas_de_50$goldEarned
 
@@ -512,17 +513,19 @@ summary(pcr_model)
 # Visualización de los componentes principales
 validationplot(pcr_model, val.type = "MSEP")
 
+# Obtener las cargas de los componentes principales
+loadings(pcr_model)
 
 
 # 6.2.
 # ANÁLISIS LONGITUDINAL Y CLUSTERING
 
-# Dividir partidas en cuatrimestres
+# Dividir partidas en trimestres
 datos_sin_extremos <- datos_sin_extremos %>%
   group_by(summonerName) %>%
   mutate(quarter = ceiling(row_number() / (n() / 4)))
 
-# Calcular oro acumulado por cuatrimestre
+# Calcular oro acumulado por trimestres
 goldEarned_cumulative_quarter <- datos_sin_extremos %>%
   group_by(summonerName, quarter) %>%
   summarise(goldEarned_cumulative = sum(goldEarned, na.rm = TRUE))
@@ -531,7 +534,7 @@ goldEarned_cumulative_quarter <- datos_sin_extremos %>%
 datos_sin_extremos <- datos_sin_extremos %>%
   left_join(goldEarned_cumulative_quarter, by = c("summonerName", "quarter"))
 
-# Calcular el cambio de oro acumulado por cuatrimestre
+# Calcular el cambio de oro acumulado por trimestres
 goldEarned_change_quarter <- goldEarned_cumulative_quarter %>%
   group_by(summonerName) %>%
   arrange(quarter) %>%
@@ -542,7 +545,7 @@ datos_sin_extremos <- datos_sin_extremos %>%
   left_join(goldEarned_change_quarter %>% select(summonerName, quarter, gold_change), 
             by = c("summonerName", "quarter"))
 
-# Visualizar oro acumulado por quarter (subconjunto de jugadores)
+# Visualizar oro acumulado por trimestres (subconjunto de jugadores)
 subconjunto_jugadores <- sample(unique(goldEarned_cumulative_quarter$summonerName), 10)
 
 goldEarned_cumulative_quarter_subconjunto <- goldEarned_cumulative_quarter %>%
@@ -550,7 +553,7 @@ goldEarned_cumulative_quarter_subconjunto <- goldEarned_cumulative_quarter %>%
 
 ggplot(goldEarned_cumulative_quarter_subconjunto, aes(x = quarter, y = goldEarned_cumulative, color = summonerName)) +
   geom_line() +
-  labs(title = "Oro Acumulado por Quarter",
+  labs(title = "Oro Acumulado por trimestre",
        x = "Quarter",
        y = "Oro Acumulado") +
   theme_minimal()
