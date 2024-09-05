@@ -54,7 +54,7 @@ colnames(datos_originales) <- gsub("_", ".", colnames(datos_originales))
 variables_numericas <- c("goldEarned", "kills", "deaths", "assists", "champExperience", "player.WR",
                          "turretKills", "totalMinionsKilled", "totalTimeCCDealt", "baronKills", "dragonKills", 
                          "totalDamageDealt","totalDamageTaken", "totalDamageDealtToChampions", 
-                         "damageDealtToObjectives", "goldEarnedPerMinute")
+                         "damageDealtToObjectives", "goldEarnedPerMinute", "visionScore")
 
 variables_categoricas <- c("teamPosition", "role", "ELO", "League", "win")
 
@@ -496,10 +496,7 @@ cat("Datos exportados correctamente a", file.path(ruta, "Resultados_Analisis_Des
 # REDUCCIÓN DE LA DIMENSIONALIDAD (PCR)
 
 # Preparar datos para PCR
-predictors <- select(datos_filtrados_mas_de_50, assists, kills, deaths, champExperience, turretKills,
-                     totalMinionsKilled, totalTimeCCDealt, baronKills, dragonKills,
-                     totalDamageDealt, totalDamageTaken, totalDamageDealtToChampions,
-                     damageDealtToObjectives)
+predictors <- select(datos_filtrados_mas_de_50, all_of(variables_numericas))
 
 ## datos_filtrados_mas_de_50 y no datos_sin_extremos para que no de error...
 response <- datos_filtrados_mas_de_50$goldEarned
@@ -521,8 +518,7 @@ loadings(pcr_model)
 # ANÁLISIS LONGITUDINAL Y CLUSTERING
 
 # Dividir partidas en trimestres
-datos_sin_extremos <- datos_sin_extremos %>%
-  group_by(summonerName) %>%
+datos_agrupados_finales <- datos_agrupados_finales %>%
   mutate(quarter = ceiling(row_number() / (n() / 4)))
 
 # Calcular oro acumulado por trimestres
