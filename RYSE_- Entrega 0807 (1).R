@@ -25,16 +25,18 @@ libraries <- c("tidyverse", "GGally", "caret", "plm", "ggplot2", "readxl", "open
 # Ejecutar la función para cada libreria en la lista
 lapply(libraries, install_and_load)
 
-#SECCION 1: LECTURA DE LOS DATOS
+#SECCION 1: LECTURA DE LOS DATOS Y DEFINICION DE RUTA
 
-# Cargar la BBDD
-datos_originales <- read_excel("Copia de RYSE NETOS VERSION A (3).xlsx")
+datos <- read_excel(here("RYSE NETOS VERSION A.xlsx"))
+ruta <- here()
 
 # Verificar que los datos se hayan cargado correctamente
 head(datos_originales)
 
 
 # SECCION 2: ANALISIS DESCRIPTIVO
+
+# 2.1: Con los datos originales
 
 # Calcular goldEarned por minuto
 datos_originales <- datos_originales %>%
@@ -86,7 +88,7 @@ gold_per_min_stats <- datos_originales %>%
 print(gold_per_min_stats)
 
 # Agrupar los datos por jugador y calcular estadísticas agregadas
-datos_agrupados <- datos_originales %>%
+datos_originales_agrupados <- datos_originales %>%
   group_by(summonerName) %>%
   summarise(across(all_of(variables_numericas),
                    list(mean = ~ mean(.x, na.rm = TRUE),
@@ -100,19 +102,19 @@ datos_agrupados <- datos_originales %>%
 
 
 # Renombrar columnas agregadas para evitar confusión
-datos_agrupados <- datos_agrupados %>%
+datos_originales_agrupados <- datos_originales_agrupados %>%
   rename_with(~ sub("_mean$", ".mean", .x)) %>%
   rename_with(~ sub("_total$", ".total", .x))
 
 
 # Calcular estadísticas por jugador antes de filtrar jugadores extremos
-# Aquí aseguramos que las columnas ends_with(".mean") existan realmente
-cols_mean <- grep("\\.mean$", colnames(datos_agrupados), value = TRUE)
+
+# Antes aseguramos que las columnas ends_with(".mean") existan realmente
+cols_mean <- grep("\\.mean$", colnames(datos_originales_agrupados), value = TRUE)
 print(cols_mean)  # Verificar columnas seleccionadas
 
-# Solo proceder si cols_mean no está vacío
-if (length(cols_mean) > 0) {
-  desc_stats_por_jugador <- datos_agrupados %>%
+if (length(cols_mean) > 0) { # Solo proceder si cols_mean no está vacío
+  desc_stats_original_agrupado <- datos_originales_agrupados %>%
     summarise(across(all_of(cols_mean), list(mean = ~ mean(.x, na.rm = TRUE),
                                              sd = ~ sd(.x, na.rm = TRUE),
                                              min = ~ min(.x, na.rm = TRUE),
@@ -124,7 +126,7 @@ if (length(cols_mean) > 0) {
     pivot_wider(names_from = stat, values_from = value)
   
   # Mostrar estadísticas por jugador
-  print(desc_stats_por_jugador)
+  print(desc_stats_original_agrupado)
 } else {
   cat("No se encontraron columnas que terminan en '.mean'\n")
 }
@@ -137,7 +139,7 @@ ggplot(datos_originales, aes(x = player.WR)) +
        y = "Frecuencia") +
   theme_minimal()
 
-# Calcular el número de partidas para cada jugador (datos originales)
+# Calcular el número de partidas para cada jugador en los datos originales
 partidas_por_jugador <- datos_originales %>%
   group_by(summonerName) %>%
   summarise(num_partidas = n())
@@ -151,26 +153,30 @@ ggplot(partidas_por_jugador, aes(x = num_partidas)) +
        y = "Frecuencia") +
   theme_minimal()
 
-# Encontrar los jugadores con más de 100 partidas
+# Encontrar los jugadores con más de 100 partidas (los eliminaremos mas adelante)
 jugadores_mas_de_100 <- partidas_por_jugador %>%
   filter(num_partidas > 100) %>%
   pull(summonerName)
 
 # Crear tablas de frecuencias absolutas y relativas para variables categóricas
 freq_abs_rel <- lapply(variables_categoricas, function(var) {
-  freq_abs <- table(datos_agrupados[[var]])
+  freq_abs <- table(datos_originales_agrupados[[var]])
   freq_rel <- prop.table(freq_abs)
   list(freq_abs = freq_abs, freq_rel = freq_rel)
 })
 
+
+# 2.2: Con los datos sin jugadores extremos (i.e. primer filtraje)
+
+
 # Filtrar los jugadores extremos (los que tienen WinRate 0 y 1,asi como el/los que tienen 150+ partidas jugadas)
-jugadores_WR_extremos <- datos_agrupados %>%
+jugadores_WR_extremos <- datos_originales_agrupados %>%
   filter((player.WR.mean == 0 | player.WR.mean == 1) | summonerName %in% jugadores_mas_de_100)
 
 nombres_jugadores_WR_extremos <- jugadores_WR_extremos$summonerName
 
 # Filtrar los datos para eliminar jugadores extremos
-datos_filtrados <- datos_originales %>%
+datos_sin_extremos <- datos_originales %>%
   filter(!summonerName %in% nombres_jugadores_WR_extremos)
 
 # Separamos los jugadores extremos de los demás
@@ -188,7 +194,7 @@ print(mean_partidas_extremos)
 print(mean_partidas_no_extremos)
 
 # Recalcular estadísticas agrupadas sin jugadores extremos
-datos_agrupados_filtrados <- datos_filtrados %>%
+datos_agrupados_sin_extremos <- datos_sin_extremos %>%
   group_by(summonerName) %>%
   summarise(across(all_of(variables_numericas),
                    list(mean = ~ mean(.x, na.rm = TRUE),
@@ -200,12 +206,12 @@ datos_agrupados_filtrados <- datos_filtrados %>%
             win = first(win))
 
 # Renombrar columnas agregadas para evitar confusión
-datos_agrupados_filtrados <- datos_agrupados_filtrados %>%
+datos_agrupados_sin_extremos <- datos_agrupados_sin_extremos %>%
   rename_with(~ sub("_mean$", ".mean", .x)) %>%
   rename_with(~ sub("_total$", ".total", .x))
 
 # Calcular estadísticas descriptivas para las variables agrupadas por jugador
-desc_stats_agrupadas <- datos_agrupados_filtrados %>%
+desc_stats_agrupadas_sin_extremos <- datos_agrupados_sin_extremos %>%
   summarise(across(ends_with(".mean"), list(mean = ~ mean(.x, na.rm = TRUE),
                                             sd = ~ sd(.x, na.rm = TRUE),
                                             min = ~ min(.x, na.rm = TRUE),
@@ -217,10 +223,17 @@ desc_stats_agrupadas <- datos_agrupados_filtrados %>%
   pivot_wider(names_from = stat, values_from = value)
 
 # Mostrar el resultado
-print(desc_stats_agrupadas)
+print(desc_stats_agrupadas_sin_extremos)
 
 
 # Tras volver a mirar el histograma de partidas jugadas, queremos ver la distribucion de Player.WR entre los jugadores con menos de o igual a 50 partidas
+
+
+
+
+
+
+# 2.2: Con los datos sin jugadores extremos, y solo con jugadores con mas de 50 partidas  (i.e. filtraje final)
 
 
 # Filtrar los jugadores con más de 50 partidas
@@ -233,16 +246,16 @@ jugadores_menos_igual_50 <- partidas_por_jugador %>%
   filter(num_partidas <= 50) %>%
   pull(summonerName)
 
-# Datos filtrados (jugadores con más de 50 partidas)
-datos_filtrados_50 <- datos_originales %>%
+# Dividimos los datos_sin_extremos en dos (parte 1/2): aqui extraemos los nombres de jugadores con más de 50 partidas
+datos_filtrados_mas_de_50 <- datos_sin_extremos %>%
   filter(summonerName %in% jugadores_mas_de_50)
 
-# Datos filtrados (jugadores con menos de o igual a 50 partidas)
-datos_menos_igual_50 <- datos_filtrados %>%
+# Dividimos los datos_sin_extremos en dos (parte 2/2): aqui extraemos los nombres de jugadores con menos de o igual a 50 partidas
+datos_filtrados_menos_igual_50 <- datos_sin_extremos %>%
   filter(summonerName %in% jugadores_menos_igual_50)
 
 # Crear un histograma de la distribución de 'player.WR' para jugadores con > 50 partidas
-ggplot(datos_filtrados_50, aes(x = player.WR)) +
+ggplot(datos_filtrados_mas_de_50, aes(x = player.WR)) +
   geom_histogram(binwidth = 0.05, fill = "blue", color = "black", alpha = 0.7) +
   labs(title = "Histograma de player.WR para jugadores con <= 50 partidas",
        x = "Win Rate del Jugador (player.WR)",
@@ -250,17 +263,17 @@ ggplot(datos_filtrados_50, aes(x = player.WR)) +
   theme_minimal()
 
 # Crear un histograma de la distribución de 'player.WR' para jugadores con <= 50 partidas
-ggplot(datos_menos_igual_50, aes(x = player.WR)) +
+ggplot(datos_filtrados_menos_igual_50, aes(x = player.WR)) +
   geom_histogram(binwidth = 0.05, fill = "blue", color = "black", alpha = 0.7) +
   labs(title = "Histograma de player.WR para jugadores con <= 50 partidas",
        x = "Win Rate del Jugador (player.WR)",
        y = "Frecuencia") +
   theme_minimal()
 
-# Concluimos de los histogramas que los jugadores con <=50 partidas tienen unos WinRates mas sospechosos, por tanto los excludimos y nos quedamos con los que tienen >50 partidas
+# Concluimos de los histogramas que los jugadores con <=50 partidas tienen unos WinRates mas sospechosos (i.e. con desv.tipica mas grande), por tanto los excludimos y nos quedamos con los que tienen >50 partidas
 
 # Agrupar los datos filtrados por jugadores con más de 50 partidas y calcular estadísticas agregadas
-datos_agrupados_50 <- datos_filtrados_50 %>%
+datos_agrupados_finales <- datos_filtrados_mas_de_50 %>%
   group_by(summonerName) %>%
   summarise(across(all_of(variables_numericas),
                    list(mean = ~ mean(.x, na.rm = TRUE),
@@ -272,12 +285,12 @@ datos_agrupados_50 <- datos_filtrados_50 %>%
             win = first(win))
 
 # Renombrar columnas agregadas para asegurar consistencia
-datos_agrupados_50 <- datos_agrupados_50 %>%
+datos_agrupados_finales <- datos_agrupados_finales %>%
   rename_with(~ sub("_mean$", ".mean", .x)) %>%
   rename_with(~ sub("_total$", ".total", .x))
 
-# Calcular estadísticas descriptivas para las variables agrupadas por jugador (sin filtrar)
-desc_stats_sin_filtrar <- datos_agrupados_filtrados %>%
+# Calcular nuevas estadísticas descriptivas agrupando datos por jugador (usando datos_agrupados_finales, que solo incluyen jugadores con más de 50 partidas)
+desc_stats_agrupados_filtrado_final <- datos_agrupados_finales %>%
   summarise(across(ends_with(".mean"), list(mean = ~ mean(.x, na.rm = TRUE),
                                             sd = ~ sd(.x, na.rm = TRUE),
                                             min = ~ min(.x, na.rm = TRUE),
@@ -288,34 +301,25 @@ desc_stats_sin_filtrar <- datos_agrupados_filtrados %>%
   pivot_longer(cols = everything(), names_to = c("variable", "stat"), names_sep = "_") %>%
   pivot_wider(names_from = stat, values_from = value)
 
-# Calcular estadísticas descriptivas para las variables agrupadas por jugador (filtrado con más de 50 partidas)
-desc_stats_filtrado_50 <- datos_agrupados_50 %>%
-  summarise(across(ends_with(".mean"), list(mean = ~ mean(.x, na.rm = TRUE),
-                                            sd = ~ sd(.x, na.rm = TRUE),
-                                            min = ~ min(.x, na.rm = TRUE),
-                                            `25%` = ~ quantile(.x, 0.25, na.rm = TRUE),
-                                            `50%` = ~ median(.x, na.rm = TRUE),
-                                            `75%` = ~ quantile(.x, 0.75, na.rm = TRUE),
-                                            max = ~ max(.x, na.rm = TRUE)))) %>%
-  pivot_longer(cols = everything(), names_to = c("variable", "stat"), names_sep = "_") %>%
-  pivot_wider(names_from = stat, values_from = value)
+# Comparar los resultados de estadisticas descriptivas de datos agrupados (con los diferentes filtrajes)
+print("Estadísticas descriptivas para datos agrupados originales:")
+print(desc_stats_original_agrupado)
 
-# Comparar los resultados
-print("Estadísticas descriptivas sin filtrar:")
-print(desc_stats_sin_filtrar)
+print("Estadísticas descriptivas para datos agrupados sin jugadores extremos:")
+print(desc_stats_agrupadas_sin_extremos)
 
-print("Estadísticas descriptivas con filtro de más de 50 partidas:")
-print(desc_stats_filtrado_50)
+print("Estadísticas descriptivas para datos agrupados, sin extremos y con filtro de más de 50 partidas:")
+print(desc_stats_agrupados_filtrado_final)
 
 
 # Renombrar columnas agregadas para evitar confusión
-datos_agrupados_filtrados <- datos_agrupados_filtrados %>%
+datos_agrupados_sin_extremos <- datos_agrupados_sin_extremos %>%
   rename_with(~ gsub("_mean", ".mean", .x)) %>%
   rename_with(~ gsub("_total", ".total", .x))
 
 
-# Análisis individualizado por liga
-analisis_por_liga <- datos_agrupados_filtrados %>%
+# Análisis individualizado por liga (datos sin extremos)
+analisis_por_liga <- datos_agrupados_finales %>%
   group_by(League) %>%
   summarise(across(ends_with(".mean"), list(mean = ~ mean(.x, na.rm = TRUE),
                                             sd = ~ sd(.x, na.rm = TRUE),
@@ -339,24 +343,30 @@ write.csv(analisis_por_liga, "analisis_por_liga.csv", row.names = FALSE)
 
 
 
+
+
 # SECCION 3: ANALISIS BIVARIADO
 
 # Análisis de correlación
 variables_bivariadas_mean <- paste0(c("goldEarned", "kills", "deaths", "assists", "champExperience", "totalDamageDealtToChampions"), ".mean")
-cor_matrix <- cor(select(datos_agrupados_50, all_of(variables_bivariadas_mean)), use = "complete.obs")
+cor_matrix <- cor(select(datos_agrupados_finales, all_of(variables_bivariadas_mean)), use = "complete.obs")
 
 # Visualización de la matriz de correlación
-ggcorr(select(datos_agrupados_50, all_of(variables_bivariadas_mean)), label = TRUE)
+ggcorr(select(datos_agrupados_finales, all_of(variables_bivariadas_mean)), label = TRUE)
+
+
+
+
 
 # SECCION 4: VISUALIZACION DE DATOS (HISTOGRAMAS Y BOXPLOTS)
 
 
 # Crear histogramas para variables numéricas agrupadas (media)
-## OJO el objeto RUTA no se ha declarado##
+
 for (var in variables_numericas) {
   var_mean <- paste0(var, ".mean")
-  if (var_mean %in% colnames(datos_agrupados_filtrados)) {
-    p <- ggplot(datos_agrupados_filtrados, aes(x = .data[[var_mean]])) +
+  if (var_mean %in% colnames(datos_agrupados_finales)) {
+    p <- ggplot(datos_agrupados_finales, aes(x = .data[[var_mean]])) +
       geom_histogram(fill = "steelblue", color = "black", alpha = 0.7) +
       labs(title = paste("Histograma de", var, "Media"),
            x = paste(var, "Media"),
@@ -371,7 +381,7 @@ for (var in variables_numericas) {
         axis.text = element_text(size = 10)
       )
     print(p)  # Visualizar el gráfico en la consola
-    ggsave(filename = paste0(ruta, "Histograma_", var, "_Media.png"), plot = p, device = "png")
+    ggsave(filename = file.path(ruta, paste0("Histograma_", var, "_Media.png")), plot = p, device = "png")
     cat("Histograma de", var, "exportado correctamente como PNG en", ruta, "\n")
   } else {
     cat("La variable", var_mean, "no se encuentra en el dataset.\n")
@@ -381,8 +391,8 @@ for (var in variables_numericas) {
 # Crear boxplots para variables numéricas agrupadas (media) categorizadas por 'teamPosition'
 for (var in variables_numericas) {
   var_mean <- paste0(var, ".mean")
-  if (var_mean %in% colnames(datos_agrupados_filtrados)) {
-    p <- ggplot(datos_agrupados_filtrados, aes(x = teamPosition, y = .data[[var_mean]])) +
+  if (var_mean %in% colnames(datos_agrupados_finales)) {
+    p <- ggplot(datos_agrupados_finales, aes(x = teamPosition, y = .data[[var_mean]])) +
       geom_boxplot() +
       labs(title = paste("Boxplot de", var, "Media por teamPosition"), x = "teamPosition", y = var) +
       theme_minimal() +
@@ -395,7 +405,7 @@ for (var in variables_numericas) {
         axis.text = element_text(size = 10)
       )
     print(p)  # Visualizar el gráfico en la consola
-    ggsave(filename = paste0(ruta, "Boxplot_", var, "_Media_por_teamPosition.png"), plot = p, device = "png")
+    ggsave(filename = file.path(ruta, paste0("Boxplot_", var, "_Media_por_teamPosition.png")), plot = p, device = "png")
     cat("Boxplot de", var, "por teamPosition exportado correctamente como PNG en", ruta, "\n")
   } else {
     cat("La variable", var_mean, "no se encuentra en el dataset.\n")
@@ -412,13 +422,13 @@ wb <- createWorkbook()
 addWorksheet(wb, "Estadísticas originales")
 writeData(wb, "Estadísticas originales", desc_stats_original, startCol = 1, startRow = 1)
 
-# Pestaña 2: Datos agrupados
+# Pestaña 2: Datos agrupados finales
 addWorksheet(wb, "Datos agrupados")
-writeData(wb, "Datos agrupados", datos_agrupados %>% select(summonerName, everything()), startCol = 1, startRow = 1)
+writeData(wb, "Datos agrupados", datos_agrupados_finales %>% select(summonerName, everything()), startCol = 1, startRow = 1)
 
 # Pestaña 3: Estadísticas descriptivas agrupadas
 addWorksheet(wb, "Estadísticas agrupadas")
-writeData(wb, "Estadísticas agrupadas", desc_stats_agrupadas, startCol = 1, startRow = 1)
+writeData(wb, "Estadísticas agrupadas", desc_stats_agrupadas_sin_extremos, startCol = 1, startRow = 1)
 
 # Pestaña 4: Partidas por jugador
 addWorksheet(wb, "Partidas por jugador")
@@ -456,17 +466,17 @@ writeData(wb, "Desc. sin filtrar", desc_stats_sin_filtrar, startCol = 1, startRo
 
 # Pestaña 10: Estadísticas descriptivas filtradas (>50 partidas)
 addWorksheet(wb, "Desc. filtrado 50+")
-writeData(wb, "Desc. filtrado 50+", desc_stats_filtrado_50, startCol = 1, startRow = 1)
+writeData(wb, "Desc. filtrado 50+", desc_stats_agrupados_filtrado_final, startCol = 1, startRow = 1)
 
 # Pestaña 11: Análisis individualizado por liga
 addWorksheet(wb, "Análisis por liga")
 writeData(wb, "Análisis por liga", analisis_por_liga, startCol = 1, startRow = 1)
 
 # Guardar el archivo Excel
-saveWorkbook(wb, file = paste0(ruta, "Resultados_Analisis_Descriptivo.xlsx"), overwrite = TRUE)
+saveWorkbook(wb, file = file.path(ruta, "Resultados_Analisis_Descriptivo.xlsx"), overwrite = TRUE)
 
 # Mensaje de confirmación
-cat("Datos exportados correctamente a", paste0(ruta, "Resultados_Analisis_Descriptivo.xlsx"), "\n")
+cat("Datos exportados correctamente a", file.path(ruta, "Resultados_Analisis_Descriptivo.xlsx"), "\n")
 
 
 
@@ -481,12 +491,12 @@ cat("Datos exportados correctamente a", paste0(ruta, "Resultados_Analisis_Descri
 # REDUCCIÓN DE LA DIMENSIONALIDAD (PCR)
 
 # Preparar datos para PCR
-predictors <- select(datos_filtrados_50, assists, kills, deaths, champExperience, turretKills,
+predictors <- select(datos_filtrados_mas_de_50, assists, kills, deaths, champExperience, turretKills,
                      totalMinionsKilled, totalTimeCCDealt, baronKills, dragonKills,
                      totalDamageDealt, totalDamageTaken, totalDamageDealtToChampions,
                      damageDealtToObjectives)
-## Datos_filtrados_50 y no datos_filtrados para que no de error...
-response <- datos_filtrados_50$goldEarned
+## datos_filtrados_mas_de_50 y no datos_sin_extremos para que no de error...
+response <- datos_filtrados_mas_de_50$goldEarned
 
 # Crear modelo de PCR
 pcr_model <- pcr(response ~ ., data = as.data.frame(predictors), scale = TRUE, validation = "CV")
@@ -503,17 +513,17 @@ validationplot(pcr_model, val.type = "MSEP")
 # ANÁLISIS LONGITUDINAL Y CLUSTERING
 
 # Dividir partidas en cuatrimestres
-datos_filtrados <- datos_filtrados %>%
+datos_sin_extremos <- datos_sin_extremos %>%
   group_by(summonerName) %>%
   mutate(quarter = ceiling(row_number() / (n() / 4)))
 
 # Calcular oro acumulado por cuatrimestre
-goldEarned_cumulative_quarter <- datos_filtrados %>%
+goldEarned_cumulative_quarter <- datos_sin_extremos %>%
   group_by(summonerName, quarter) %>%
   summarise(goldEarned_cumulative = sum(goldEarned, na.rm = TRUE))
 
 # Unir la columna 'goldEarned_cumulative' a los datos filtrados
-datos_filtrados <- datos_filtrados %>%
+datos_sin_extremos <- datos_sin_extremos %>%
   left_join(goldEarned_cumulative_quarter, by = c("summonerName", "quarter"))
 
 # Calcular el cambio de oro acumulado por cuatrimestre
@@ -523,7 +533,7 @@ goldEarned_change_quarter <- goldEarned_cumulative_quarter %>%
   mutate(gold_change = goldEarned_cumulative - lag(goldEarned_cumulative))
 
 # Unir la columna 'gold_change' a los datos filtrados
-datos_filtrados <- datos_filtrados %>%
+datos_sin_extremos <- datos_sin_extremos %>%
   left_join(goldEarned_change_quarter %>% select(summonerName, quarter, gold_change), 
             by = c("summonerName", "quarter"))
 
