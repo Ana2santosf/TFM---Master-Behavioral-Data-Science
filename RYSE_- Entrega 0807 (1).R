@@ -27,8 +27,9 @@ lapply(libraries, install_and_load)
 
 #SECCION 1: LECTURA DE LOS DATOS Y DEFINICION DE RUTA
 
-datos <- read_excel(here("RYSE NETOS VERSION A.xlsx"))
 ruta <- here()
+
+datos_originales <- read_excel(file.path(ruta, "Copia de RYSE NETOS VERSION A (3).xlsx"))
 
 # Verificar que los datos se hayan cargado correctamente
 head(datos_originales)
@@ -318,6 +319,10 @@ datos_agrupados_sin_extremos <- datos_agrupados_sin_extremos %>%
   rename_with(~ gsub("_total", ".total", .x))
 
 
+
+
+
+########ESTO HACE FALTA AQUI? O ES MEJOR MOVERLO A LA SECCION 6.2?
 # Análisis individualizado por liga (datos sin extremos)
 analisis_por_liga <- datos_agrupados_finales %>%
   group_by(League) %>%
@@ -340,7 +345,7 @@ print(analisis_por_liga)
 
 # Guardar en un archivo CSV
 write.csv(analisis_por_liga, "analisis_por_liga.csv", row.names = FALSE)
-
+##################
 
 
 
@@ -419,20 +424,20 @@ for (var in variables_numericas) {
 wb <- createWorkbook()
 
 # Pestaña 1: Estadísticas descriptivas originales
-addWorksheet(wb, "Estadísticas originales")
-writeData(wb, "Estadísticas originales", desc_stats_original, startCol = 1, startRow = 1)
+addWorksheet(wb, "Estadísticas sin agrupar con datos originales")
+writeData(wb, "Estadísticas sin agrupar con datos originales", desc_stats_original, startCol = 1, startRow = 1)
 
 # Pestaña 2: Datos agrupados finales
 addWorksheet(wb, "Datos agrupados")
 writeData(wb, "Datos agrupados", datos_agrupados_finales %>% select(summonerName, everything()), startCol = 1, startRow = 1)
 
-# Pestaña 3: Estadísticas descriptivas agrupadas
-addWorksheet(wb, "Estadísticas agrupadas")
-writeData(wb, "Estadísticas agrupadas", desc_stats_agrupadas_sin_extremos, startCol = 1, startRow = 1)
+# Pestaña 3: Estadísticas descriptivas agrupadas (datos con filtraje final)
+addWorksheet(wb, "Estadísticas agrupadas con datos filtrados")
+writeData(wb, "Estadísticas agrupadas con datos filtrados", desc_stats_agrupados_filtrado_final, startCol = 1, startRow = 1)
 
-# Pestaña 4: Partidas por jugador
-addWorksheet(wb, "Partidas por jugador")
-writeData(wb, "Partidas por jugador", partidas_por_jugador, startCol = 1, startRow = 1)
+# Pestaña 4: Partidas por jugador (datos originales)
+addWorksheet(wb, "Partidas por jugador en datos originales")
+writeData(wb, "Partidas por jugador en datos originales", partidas_por_jugador, startCol = 1, startRow = 1)
 
 # Pestaña 5: Frecuencias absolutas y relativas de variables categóricas
 for (i in seq_along(variables_categoricas)) {
@@ -460,13 +465,13 @@ writeData(wb, "Comparación de partidas", comp_df, startCol = 1, startRow = 1)
 addWorksheet(wb, "Matriz de correlación")
 writeData(wb, "Matriz de correlación", cor_matrix, startCol = 1, startRow = 1)
 
-# Pestaña 9: Estadísticas descriptivas sin filtrar
-addWorksheet(wb, "Desc. sin filtrar")
-writeData(wb, "Desc. sin filtrar", desc_stats_sin_filtrar, startCol = 1, startRow = 1)
+# Pestaña 9: Estadísticas descriptivas sin agrupar ni filtrar
+addWorksheet(wb, "Desc. sin agrupar ni filtrar")
+writeData(wb, "Desc. sin agrupar ni filtrar", desc_stats_original, startCol = 1, startRow = 1)
 
-# Pestaña 10: Estadísticas descriptivas filtradas (>50 partidas)
-addWorksheet(wb, "Desc. filtrado 50+")
-writeData(wb, "Desc. filtrado 50+", desc_stats_agrupados_filtrado_final, startCol = 1, startRow = 1)
+# Pestaña 10: Estadísticas descriptivas agrupadas y filtradas (sin extremos y con jugadores >50 partidas)
+addWorksheet(wb, "Desc. agrupadas con filtrado final")
+writeData(wb, "Desc. agrupadas con filtrado fina", desc_stats_agrupados_filtrado_final, startCol = 1, startRow = 1)
 
 # Pestaña 11: Análisis individualizado por liga
 addWorksheet(wb, "Análisis por liga")
@@ -626,6 +631,33 @@ cat("Resultados del análisis por posición exportados correctamente a Excel.\n"
 
 # 6.4. 
 # ANÁLISIS POR LIGAS - NOTA: Aunque no lo mencionamos en la entrega 3, lo agregamos para la entrega FINAL
+
+############ ESTO ESTA PENDIENTE DE INTEGRAR (ESTABA EN EL INICIO DEL CODIGO)
+# Análisis individualizado por liga (datos sin extremos)
+analisis_por_liga <- datos_agrupados_finales %>%
+  group_by(League) %>%
+  summarise(across(ends_with(".mean"), list(mean = ~ mean(.x, na.rm = TRUE),
+                                            sd = ~ sd(.x, na.rm = TRUE),
+                                            min = ~ min(.x, na.rm = TRUE),
+                                            `25%` = ~ quantile(.x, 0.25, na.rm = TRUE),
+                                            `50%` = ~ median(.x, na.rm = TRUE),
+                                            `75%` = ~ quantile(.x, 0.75, na.rm = TRUE),
+                                            max = ~ max(.x, na.rm = TRUE)))) %>%
+  pivot_longer(cols = -League, names_to = c("variable", "stat"), names_sep = "_")
+
+# Convertir las listas en columnas atómicas (ajustando según las columnas presentes)
+analisis_por_liga <- analisis_por_liga %>%
+  pivot_wider(names_from = stat, values_from = value) %>%
+  unnest(cols = c(mean, sd, min, `25%`, `50%`, `75%`, max))
+
+# Mostrar el resultado
+print(analisis_por_liga)
+
+# Guardar en un archivo CSV
+write.csv(analisis_por_liga, "analisis_por_liga.csv", row.names = FALSE)
+######################
+
+
 
 
 # Crear un libro de trabajo para los resultados de ligas
