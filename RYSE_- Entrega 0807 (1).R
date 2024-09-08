@@ -514,31 +514,57 @@ validationplot(pcr_model, val.type = "MSEP")
 loadings(pcr_model)
 
 
+
 # 6.2.
 # ANÁLISIS LONGITUDINAL Y CLUSTERING
 
 # Dividir partidas en trimestres
-datos_agrupados_finales <- datos_agrupados_finales %>%
-  mutate(quarter = ceiling(row_number() / (n() / 4)))
+datos_filtrados_mas_de_50 <- datos_filtrados_mas_de_50 %>%
+  group_by(summonerName) %>%
+  mutate(quarter = ceiling(row_number() / (n() / 4))) %>%
+  ungroup()
 
 # Calcular oro acumulado por trimestres
-goldEarned_cumulative_quarter <- datos_sin_extremos %>%
+goldEarned_cumulative_quarter <- datos_filtrados_mas_de_50 %>%
   group_by(summonerName, quarter) %>%
   summarise(goldEarned_cumulative = sum(goldEarned, na.rm = TRUE))
 
 # Unir la columna 'goldEarned_cumulative' a los datos filtrados
-datos_sin_extremos <- datos_sin_extremos %>%
+datos_filtrados_mas_de_50 <- datos_filtrados_mas_de_50 %>%
   left_join(goldEarned_cumulative_quarter, by = c("summonerName", "quarter"))
 
-# Calcular el cambio de oro acumulado por trimestres
-goldEarned_change_quarter <- goldEarned_cumulative_quarter %>%
-  group_by(summonerName) %>%
-  arrange(quarter) %>%
-  mutate(gold_change = goldEarned_cumulative - lag(goldEarned_cumulative))
 
-# Unir la columna 'gold_change' a los datos filtrados
-datos_sin_extremos <- datos_sin_extremos %>%
-  left_join(goldEarned_change_quarter %>% select(summonerName, quarter, gold_change), 
+# Calcular el cambio de oro acumulado por trimestres
+# Inicializar la columna para el cambio de oro
+goldEarned_cumulative_quarter$gold_change <- NA
+
+# Lista de jugadores únicos
+players <- unique(goldEarned_cumulative_quarter$summonerName)
+
+# Bucle para calcular el cambio de oro acumulado por trimestre
+for (player in players) {
+  # Subconjunto de datos para el jugador actual
+  player_data <- goldEarned_cumulative_quarter %>%
+    filter(summonerName == player)
+  
+  # Calcular el cambio de oro acumulado
+  for (i in 2:nrow(player_data)) {
+    # Encontrar la fila correspondiente en el dataframe original
+    goldEarned_cumulative_quarter$gold_change[
+      goldEarned_cumulative_quarter$summonerName == player & 
+        goldEarned_cumulative_quarter$quarter == player_data$quarter[i]] <- 
+      player_data$goldEarned_cumulative[i] - player_data$goldEarned_cumulative[i - 1]
+  }
+}
+
+# Verificar el resultado
+head(goldEarned_cumulative_quarter)
+
+
+###ESTO NO SE SI SERIA MEJOR NO PONERLO O CAMBIARLO....
+#Unir la columna 'gold_change' a los datos filtrados
+datos_filtrados_mas_de_50 <- datos_filtrados_mas_de_50 %>%
+  left_join(goldEarned_cumulative_quarter %>% select(summonerName, quarter, gold_change), 
             by = c("summonerName", "quarter"))
 
 # Visualizar oro acumulado por trimestres (subconjunto de jugadores)
@@ -558,6 +584,7 @@ ggplot(goldEarned_cumulative_quarter_subconjunto, aes(x = quarter, y = goldEarne
 
 # Wide format para que pueda operar el paquete kml3d
 BD.kml <- goldEarned_cumulative_quarter %>%  
+  select(summonerName, quarter, goldEarned_cumulative) %>%
   gather(variable, value, -(summonerName:quarter)) %>%
   unite(temp,variable,quarter) %>% 
   spread(temp, value)
@@ -576,11 +603,10 @@ for(i in 2:5){
   ordered(listPart)
 }
 
-plotAllCriterion(listPart) # Parece que en 3 de 5 criterios 5 particiones es mejor...
+plotAllCriterion(listPart) # Parece que en 3 de 5 criterios 2 particiones es mejor...
 
 # Cómo guardar pertenencia al cluster según solución escogida como óptima
 BD.kml$clusters <- getClusters(cldGE, 5)
-
 
 
 # 6.3.
