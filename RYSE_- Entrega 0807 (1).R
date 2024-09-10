@@ -550,91 +550,67 @@ ggplot(pca_scores, aes(x = PC1, y = PC2)) +
   ylab("Componente Principal 2")
 
 # Ver los loadings (cargas de cada variable en los componentes)
-loadings_pca <- pca_variables_preseleccionadas$rotation
-print(loadings_pca)
+loadings_pca_variables_preseleccionadas <- pca_variables_preseleccionadas$rotation
+print(loadings_pca_variables_preseleccionadas)
 
 # CONCLUSION: Al comparar el PCA que contiene (casi) todas las variables orignales del dataset con el que contiene solo las preseleccionadas por nosotros,
 # observamos que la variabza explicada en el segundo PCA (variables preseleccionadas) es mucho mayor para los primeros componentes, lo que suigiere que
 # nuestras variables preseleccionadas capturan mas patrones significativos en los datos. El otro PCA (con todas las variables) diluye la varianza en muchas dimensiones, lo que indica que hay muchas variables irrelevantes.
-# Por tanto, proseguimos exclusivamente con las variables preseleccionadas.
+# Por tanto, proseguimos exclusivamente a hacer el PCR con las variables preseleccionadas.
 
 
 
 
 # 6.1.2 PRINCIPAL COMPONENT REGRESSION (PCR)
 
-# Preparar datos para PCR
-predictors <- select(datos_filtrados_mas_de_50, all_of(variables_numericas_preseleccion))
-
-## datos_filtrados_mas_de_50 y no datos_sin_extremos para que no de error...
+# Definir variable de respuesta (goldEarned). La usaremos a pesar de que los UTILITY no ganen oro (hacen visionScore y assists, como visto de los analisis descriptivos iniciales), 
+# pero en el code chunk siguiente anadiremos un termino de interaccion entre UTILITY (con una nueva variable binaria creada por nosotros) y sus predictores pertientes (assists y visionScore)
 response <- datos_filtrados_mas_de_50$goldEarned
 
-# Crear modelo de PCR
-pcr_model <- pcr(response ~ ., data = as.data.frame(predictors), scale = TRUE, validation = "CV")
+# Anadir variable binaria para UTILITY 
+datos_filtrados_mas_de_50 <- datos_filtrados_mas_de_50 %>%
+  mutate(is_utility = ifelse(teamPosition == "UTILITY", 1, 0))
+
+# Anadir terminos de interaccion para assists y visionScore con el rol UTILITY, y excluir goldEarned de los predictores (ya que es variable respuesta)
+predictors_con_interaccion <- datos_filtrados_mas_de_50 %>%
+  select(all_of(variables_numericas_preseleccion), is_utility) %>%
+    mutate(interaccion_assists_utility = assists * is_utility,
+         interaccion_visionScore_utility = visionScore * is_utility) %>%
+  select(-goldEarned) 
+
+# Crear modelo de PCR con interacciones
+pcr_model_con_interacciones <- pcr(response ~ ., data = as.data.frame(predictors_con_interaccion), scale = TRUE, validation = "CV")
 
 # Resumen del modelo
-summary_pcr <- summary(pcr_model)
+summary_pcr <- summary(pcr_model_con_interacciones)
 
 # Guardar las cargas de los componentes principales
-loadings_pcr <- as.data.frame(loadings(pcr_model))
+loadings_pcr <- as.data.frame(loadings(pcr_model_con_interacciones))
 write.xlsx(loadings_pcr, file = file.path(ruta_modelizacion, "Cargas_Componentes_PCR.xlsx"), overwrite = TRUE)
 
 
 # Visualización de los componentes principales
 png(file = file.path(ruta_graficos, "Validacion_PCR_MSEP.png"))
-validationplot(pcr_model, val.type = "MSEP")
+validationplot(pcr_model_con_interacciones, val.type = "MSEP")
 dev.off()
 
 # Visualización de los loadings de los componentes principales
 png(file = file.path(ruta_graficos, "Loadings_Componentes_PCR.png"))
-barplot(loadings(pcr_model), main = "Cargas de los Componentes Principales (PCR)")
+barplot(loadings(pcr_model_con_interacciones), main = "Cargas de los Componentes Principales (PCR)")
 dev.off()
 
 cat("Modelo PCR y gráficos guardados correctamente.")
 
 # Obtener las cargas de los componentes principales
-loadings(pcr_model)
+loadings(pcr_model_con_interacciones)
 
 
-
-######
-############################
-################### REVISAR DE AQUI PARA ABAJO
-
-
-###FALTA REVISAR Y GUARDAR EN CARPETAS CORRESPONDIENTES DE AQUI PARA ABAJO
+################### FALTA REVISAR DE AQUI PARA ABAJO + GUARDAR OUTPUTS EN CARPETAS CORRESPONDIENTES
 
 
 # 6.2.
-# Análisis individualizado por liga - HABRA QUE USAR EL 'goldEarnedPerMinute' AQUI (se creo la varibale justamente para normalizar valores de oro ganado entre ligas)
-analisis_por_liga <- datos_agrupados_finales %>%
-  group_by(League) %>%
-  summarise(across(ends_with(".mean"), list(mean = ~ mean(.x, na.rm = TRUE),
-                                            sd = ~ sd(.x, na.rm = TRUE),
-                                            min = ~ min(.x, na.rm = TRUE),
-                                            `25%` = ~ quantile(.x, 0.25, na.rm = TRUE),
-                                            `50%` = ~ median(.x, na.rm = TRUE),
-                                            `75%` = ~ quantile(.x, 0.75, na.rm = TRUE),
-                                            max = ~ max(.x, na.rm = TRUE)))) %>%
-  pivot_longer(cols = -League, names_to = c("variable", "stat"), names_sep = "_")
-
-# Convertir las listas en columnas atómicas (ajustando según las columnas presentes)
-analisis_por_liga <- analisis_por_liga %>%
-  pivot_wider(names_from = stat, values_from = value) %>%
-  unnest(cols = c(mean, sd, min, `25%`, `50%`, `75%`, max))
-
-# Mostrar el resultado
-print(analisis_por_liga)
-
-# Guardar en un archivo CSV
-write.csv(analisis_por_liga, "analisis_por_liga.csv", row.names = FALSE)
-##################
-
-
-
-
-# 6.3.
 # ANÁLISIS LONGITUDINAL Y CLUSTERING
+
 
 # Dividir partidas en trimestres
 datos_filtrados_mas_de_50 <- datos_filtrados_mas_de_50 %>%
@@ -703,7 +679,7 @@ ggplot(goldEarned_cumulative_quarter_subconjunto, aes(x = quarter, y = goldEarne
 
 
 
-#### EJEMPLO DE CLUSTERING
+#### EJEMPLO DE CLUSTERING (DAVID)
 
 # Wide format para que pueda operar el paquete kml3d
 BD.kml <- goldEarned_cumulative_quarter %>%  
@@ -732,53 +708,39 @@ plotAllCriterion(listPart) # Parece que en 3 de 5 criterios 2 particiones es mej
 BD.kml$clusters <- getClusters(cldGE, 5)
 
 
-# 6.4.
-# ANÁLISIS POR POSICIÓN
 
-library(gridExtra)
-library(openxlsx)
-
-# Crear un libro de trabajo para los resultados de posiciones
-wb_pos <- createWorkbook()
-
-# Analizar rendimiento por posición
-for (position in unique(datos$teamPosition)) {
-  cat("\nAnálisis para la posición:", position, "\n")
-  
-  datos_posicion <- datos %>% filter(teamPosition == position)
-  
-  if (nrow(datos_posicion) > 0) {
-    summary_stats <- summary(datos_posicion %>% select(all_of(variables_numericas_preseleccion)))
-    addWorksheet(wb_pos, paste0("Resumen_", position))
-    writeData(wb_pos, paste0("Resumen_", position), summary_stats)
-    
-    # Visualización: Boxplot por posición
-    plots <- list()
-    for (var in variables_numericas_preseleccion) {
-      p <- ggplot(datos_posicion, aes(x = teamPosition, y = .data[[var]])) +
-        geom_boxplot() +
-        labs(title = paste("Boxplot de", var, "por posición"), x = "Posición", y = var) +
-        theme_minimal()
-      plots[[var]] <- p
-    }
-    
-    # Guardar todos los gráficos en un solo archivo de imagen
-    g <- marrangeGrob(plots, nrow = 2, ncol = 2)
-    ggsave(filename = paste0("Boxplots_Posicion_", gsub("/", "_", position), ".png"), g, width = 16, height = 12)
-    cat("Boxplots para la posición", position, "exportados correctamente.\n")
-  } else {
-    cat("No hay suficientes datos para la posición:", position, "\n")
-  }
-}
-
-# Guardar el archivo Excel
-saveWorkbook(wb_pos, file = "Resultados_Analisis_Posiciones.xlsx", overwrite = TRUE)
-cat("Resultados del análisis por posición exportados correctamente a Excel.\n")
 
 
 
 # 6.5. 
 # ANÁLISIS POR LIGAS - NOTA: Aunque no lo mencionamos en la entrega 3, lo agregamos para la entrega FINAL
+
+#################### ESTO SIGUE SIENDO RELEVANTE? CREO QUE ES UNA REPETICION
+# Análisis individualizado por liga - HABRA QUE USAR EL 'goldEarnedPerMinute' AQUI (se creo la varibale justamente para normalizar valores de oro ganado entre ligas)
+analisis_por_liga <- datos_agrupados_finales %>%
+  group_by(League) %>%
+  summarise(across(ends_with(".mean"), list(mean = ~ mean(.x, na.rm = TRUE),
+                                            sd = ~ sd(.x, na.rm = TRUE),
+                                            min = ~ min(.x, na.rm = TRUE),
+                                            `25%` = ~ quantile(.x, 0.25, na.rm = TRUE),
+                                            `50%` = ~ median(.x, na.rm = TRUE),
+                                            `75%` = ~ quantile(.x, 0.75, na.rm = TRUE),
+                                            max = ~ max(.x, na.rm = TRUE)))) %>%
+  pivot_longer(cols = -League, names_to = c("variable", "stat"), names_sep = "_")
+
+# Convertir las listas en columnas atómicas (ajustando según las columnas presentes)
+analisis_por_liga <- analisis_por_liga %>%
+  pivot_wider(names_from = stat, values_from = value) %>%
+  unnest(cols = c(mean, sd, min, `25%`, `50%`, `75%`, max))
+
+# Mostrar el resultado
+print(analisis_por_liga)
+
+# Guardar en un archivo CSV
+write.csv(analisis_por_liga, "analisis_por_liga.csv", row.names = FALSE)
+##################
+
+
 
 ############ ESTO ESTA PENDIENTE DE INTEGRAR (ESTABA EN EL INICIO DEL CODIGO)
 # Análisis individualizado por liga (datos sin extremos)
@@ -916,4 +878,50 @@ saveWorkbook(wb_regresion, file = "Resultados_Regresiones.xlsx", overwrite = TRU
 cat("Resultados de las regresiones exportados correctamente a Excel.\n")
 
 
+
+
+
+
+# # 6.X.
+# # ANÁLISIS POR POSICIÓN ###### ESTO NO SON ANALISIS DESCRIPTIVOS INCIALES? QUE APORTAN AQUI?
+# 
+# library(gridExtra)
+# library(openxlsx)
+# 
+# # Crear un libro de trabajo para los resultados de posiciones
+# wb_pos <- createWorkbook()
+# 
+# # Analizar rendimiento por posición
+# for (position in unique(datos$teamPosition)) {
+#   cat("\nAnálisis para la posición:", position, "\n")
+#   
+#   datos_posicion <- datos %>% filter(teamPosition == position)
+#   
+#   if (nrow(datos_posicion) > 0) {
+#     summary_stats <- summary(datos_posicion %>% select(all_of(variables_numericas_preseleccion)))
+#     addWorksheet(wb_pos, paste0("Resumen_", position))
+#     writeData(wb_pos, paste0("Resumen_", position), summary_stats)
+#     
+#     # Visualización: Boxplot por posición
+#     plots <- list()
+#     for (var in variables_numericas_preseleccion) {
+#       p <- ggplot(datos_posicion, aes(x = teamPosition, y = .data[[var]])) +
+#         geom_boxplot() +
+#         labs(title = paste("Boxplot de", var, "por posición"), x = "Posición", y = var) +
+#         theme_minimal()
+#       plots[[var]] <- p
+#     }
+#     
+#     # Guardar todos los gráficos en un solo archivo de imagen
+#     g <- marrangeGrob(plots, nrow = 2, ncol = 2)
+#     ggsave(filename = paste0("Boxplots_Posicion_", gsub("/", "_", position), ".png"), g, width = 16, height = 12)
+#     cat("Boxplots para la posición", position, "exportados correctamente.\n")
+#   } else {
+#     cat("No hay suficientes datos para la posición:", position, "\n")
+#   }
+# }
+# 
+# # Guardar el archivo Excel
+# saveWorkbook(wb_pos, file = "Resultados_Analisis_Posiciones.xlsx", overwrite = TRUE)
+# cat("Resultados del análisis por posición exportados correctamente a Excel.\n")
 
