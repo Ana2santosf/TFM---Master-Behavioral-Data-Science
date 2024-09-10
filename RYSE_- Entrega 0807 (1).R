@@ -2,7 +2,7 @@
 
 # VERIFICACIÓN DE LOS PAQUETES Y LIBRERÍAS
 
-# Definir la función para instalar y cargar bibliotecas
+# Definir la función para instalar y cargar librerias
 install_and_load <- function(package) {
   if (!requireNamespace(package, quietly = TRUE)) {
     tryCatch({
@@ -77,7 +77,7 @@ write.xlsx(datos_originales, file = file.path(ruta_depuracion, "Datos_Depurados.
 # SECCION 3: ANALISIS DESCRIPTIVO
 
 # Seleccionar variables de interés
-variables_numericas <- c("goldEarned", "kills", "deaths", "assists", "champExperience", "player.WR",
+variables_numericas_preseleccion <- c("goldEarned", "kills", "deaths", "assists", "champExperience", "player.WR",
                          "turretKills", "totalMinionsKilled", "totalTimeCCDealt", "baronKills", "dragonKills", 
                          "totalDamageDealt","totalDamageTaken", "totalDamageDealtToChampions", 
                          "damageDealtToObjectives", "goldEarnedPerMinute", "visionScore")
@@ -87,7 +87,7 @@ variables_categoricas <- c("teamPosition", "role", "ELO", "League", "win")
 
 # Calcular estadísticas descriptivas para las variables originales y guardar en la carpeta Descriptivos
 desc_stats_original <- datos_originales %>%
-  summarise(across(all_of(variables_numericas), list(mean = ~ mean(.x, na.rm = TRUE),
+  summarise(across(all_of(variables_numericas_preseleccion), list(mean = ~ mean(.x, na.rm = TRUE),
                                                      sd = ~ sd(.x, na.rm = TRUE),
                                                      min = ~ min(.x, na.rm = TRUE),
                                                      `25%` = ~ quantile(.x, 0.25, na.rm = TRUE),
@@ -130,7 +130,7 @@ write.xlsx(gold_per_min_stats, file = file.path(ruta_descriptivos, "Estadisticas
 # Agrupar los datos por jugador y calcular estadísticas agregadas
 datos_originales_agrupados <- datos_originales %>%
   group_by(summonerName) %>%
-  summarise(across(all_of(variables_numericas),
+  summarise(across(all_of(variables_numericas_preseleccion),
                    list(mean = ~ mean(.x, na.rm = TRUE),
                         total = ~ sum(.x, na.rm = TRUE))),
             teamPosition = first(teamPosition),
@@ -243,7 +243,7 @@ write.xlsx(datos_sin_extremos, file = file.path(ruta_depuracion, "Datos_Sin_Extr
 
 # Calcular estadísticas descriptivas para los datos sin jugadores extremos
 desc_stats_agrupadas_sin_extremos <- datos_sin_extremos %>%
-  summarise(across(all_of(variables_numericas), list(mean = ~ mean(.x, na.rm = TRUE),
+  summarise(across(all_of(variables_numericas_preseleccion), list(mean = ~ mean(.x, na.rm = TRUE),
                                                      sd = ~ sd(.x, na.rm = TRUE),
                                                      min = ~ min(.x, na.rm = TRUE),
                                                      `25%` = ~ quantile(.x, 0.25, na.rm = TRUE),
@@ -289,7 +289,7 @@ datos_filtrados_menos_igual_50 <- datos_sin_extremos %>%
 # Agrupar los datos filtrados por jugadores con más de 50 partidas y calcular estadísticas agregadas
 datos_agrupados_finales <- datos_filtrados_mas_de_50 %>%
   group_by(summonerName) %>%
-  summarise(across(all_of(variables_numericas),
+  summarise(across(all_of(variables_numericas_preseleccion),
                    list(mean = ~ mean(.x, na.rm = TRUE),
                         total = ~ sum(.x, na.rm = TRUE))),
             teamPosition = first(teamPosition),
@@ -412,7 +412,7 @@ ggsave(filename = file.path(ruta_graficos, "Histograma_Player_WR_Menos_Igual_50.
 
 
 # Crear histogramas para variables numéricas agrupadas (media)
-for (var in variables_numericas) {
+for (var in variables_numericas_preseleccion) {
   var_mean <- paste0(var, ".mean")
   if (var_mean %in% colnames(datos_agrupados_finales)) {
     p <- ggplot(datos_agrupados_finales, aes(x = .data[[var_mean]])) +
@@ -438,7 +438,7 @@ for (var in variables_numericas) {
 }
 
 # Crear boxplots para variables numéricas agrupadas (media) categorizadas por 'teamPosition'
-for (var in variables_numericas) {
+for (var in variables_numericas_preseleccion) {
   var_mean <- paste0(var, ".mean")
   if (var_mean %in% colnames(datos_agrupados_finales)) {
     p <- ggplot(datos_agrupados_finales, aes(x = teamPosition, y = .data[[var_mean]])) +
@@ -485,11 +485,86 @@ print(cor_matrix)
 
 # SECCION 6: ANÁLISIS AVANZADOS
 
-# 6.1.
-# REDUCCIÓN DE LA DIMENSIONALIDAD (PCR)
+# 6.1. REDUCCIÓN DE LA DIMENSIONALIDAD
+# 6.1.1 PRINCIPAL COMPONENT ANALISIS (PCA)
+# 6.1.1.1 PCA sobre todas las variables del dataset
+
+# Filtramos ulteriormente los datos para que sean analizables por un PCA
+datos_filtrados_mas_de_50_numericas <- datos_filtrados_mas_de_50 %>%
+  select_if(is.numeric) %>%                     # Mantener solo variables numéricas
+  select_if(~ var(.) > 0) %>%                   # Eliminar columnas con varianza cero
+  select(-Partida, -goldEarnedPerMinute, -quarter, -goldEarned_cumulative)  # Eliminar variables no útiles
+
+# Realizar PCA sobre todas las variables
+pca_todas_variables <- prcomp(datos_filtrados_mas_de_50_numericas, center = TRUE, scale. = TRUE)
+
+# Resumen del PCA
+summary(pca_todas_variables)
+
+# Scree plot - visualización de la varianza explicada por cada componente
+png(file = file.path(ruta_graficos, "Scree_Plot_PCA_todas_variables.png"))
+screeplot(pca_todas_variables, type = "lines", main = "Scree Plot PCA (todas variables) - Varianza Explicada")
+dev.off()
+
+# Cargar los loadings (contribuciones de las variables a los componentes)
+loadings_pca_todas_variables <- as.data.frame(pca_todas_variables$rotation)
+
+# Convertir los loadings a un data frame para comparar varios componentes
+loadings_pca_todas_variables_df <- as.data.frame(loadings_pca_todas_variables)
+
+# Ver las contribuciones para los primeros cinco componentes
+loadings_pca_todas_variables_df[ , 1:5]
+
+
+# 6.1.1.2 PCA sobre las variables preseleccionadas por nosotros
+
+# Seleccionar las variables numéricas para el PCA
+variables_numericas_preseleccion <- c("goldEarned", "kills", "deaths", "assists", "champExperience", 
+                         "player.WR", "turretKills", "totalMinionsKilled", "totalTimeCCDealt", 
+                         "baronKills", "dragonKills", "totalDamageDealt", 
+                         "totalDamageTaken", "totalDamageDealtToChampions", 
+                         "damageDealtToObjectives", "goldEarnedPerMinute")
+
+# Extraer los datos filtrados (solo variables numéricas)
+datos_pca_variables_preseleccionadas <- select(datos_filtrados_mas_de_50, all_of(variables_numericas_preseleccion))
+
+# Realizar el PCA con normalización (centrado y escalado)
+pca_variables_preseleccionadas <- prcomp(datos_pca_variables_preseleccionadas, center = TRUE, scale. = TRUE)
+
+# Ver el resumen del PCA
+summary(pca_variables_preseleccionadas)
+
+# Visualización de la varianza explicada (Scree Plot)
+png(file = file.path(ruta_graficos, "Scree_Plot_PCA_variables_preseleccionadas.png"))
+screeplot(pca_variables_preseleccionadas, type = "lines", main = "Scree Plot PCA (variables preseleccionadas) - Varianza Explicada")
+dev.off()
+
+# Extraer los scores del PCA (coordenadas de las observaciones en el nuevo espacio)
+pca_scores <- as.data.frame(pca_variables_preseleccionadas$x)
+
+# Visualizar los datos proyectados en los dos primeros componentes
+ggplot(pca_scores, aes(x = PC1, y = PC2)) +
+  geom_point(alpha = 0.7) +
+  ggtitle("PCA - Proyección en los Componentes 1 y 2") +
+  xlab("Componente Principal 1") +
+  ylab("Componente Principal 2")
+
+# Ver los loadings (cargas de cada variable en los componentes)
+loadings_pca <- pca_variables_preseleccionadas$rotation
+print(loadings_pca)
+
+# CONCLUSION: Al comparar el PCA que contiene (casi) todas las variables orignales del dataset con el que contiene solo las preseleccionadas por nosotros,
+# observamos que la variabza explicada en el segundo PCA (variables preseleccionadas) es mucho mayor para los primeros componentes, lo que suigiere que
+# nuestras variables preseleccionadas capturan mas patrones significativos en los datos. El otro PCA (con todas las variables) diluye la varianza en muchas dimensiones, lo que indica que hay muchas variables irrelevantes.
+# Por tanto, proseguimos exclusivamente con las variables preseleccionadas.
+
+
+
+
+# 6.1.2 PRINCIPAL COMPONENT REGRESSION (PCR)
 
 # Preparar datos para PCR
-predictors <- select(datos_filtrados_mas_de_50, all_of(variables_numericas))
+predictors <- select(datos_filtrados_mas_de_50, all_of(variables_numericas_preseleccion))
 
 ## datos_filtrados_mas_de_50 y no datos_sin_extremos para que no de error...
 response <- datos_filtrados_mas_de_50$goldEarned
@@ -522,7 +597,6 @@ loadings(pcr_model)
 
 
 
-
 ######
 ############################
 ################### REVISAR DE AQUI PARA ABAJO
@@ -532,7 +606,7 @@ loadings(pcr_model)
 
 
 # 6.2.
-# Análisis individualizado por liga (datos sin extremos)
+# Análisis individualizado por liga - HABRA QUE USAR EL 'goldEarnedPerMinute' AQUI (se creo la varibale justamente para normalizar valores de oro ganado entre ligas)
 analisis_por_liga <- datos_agrupados_finales %>%
   group_by(League) %>%
   summarise(across(ends_with(".mean"), list(mean = ~ mean(.x, na.rm = TRUE),
@@ -674,13 +748,13 @@ for (position in unique(datos$teamPosition)) {
   datos_posicion <- datos %>% filter(teamPosition == position)
   
   if (nrow(datos_posicion) > 0) {
-    summary_stats <- summary(datos_posicion %>% select(all_of(variables_numericas)))
+    summary_stats <- summary(datos_posicion %>% select(all_of(variables_numericas_preseleccion)))
     addWorksheet(wb_pos, paste0("Resumen_", position))
     writeData(wb_pos, paste0("Resumen_", position), summary_stats)
     
     # Visualización: Boxplot por posición
     plots <- list()
-    for (var in variables_numericas) {
+    for (var in variables_numericas_preseleccion) {
       p <- ggplot(datos_posicion, aes(x = teamPosition, y = .data[[var]])) +
         geom_boxplot() +
         labs(title = paste("Boxplot de", var, "por posición"), x = "Posición", y = var) +
@@ -744,7 +818,7 @@ for (liga in unique(datos_originales$League)) {
   datos_liga <- datos_originales %>% filter(League == liga)
   
   if (nrow(datos_liga) > 0) {
-    summary_stats <- datos_liga %>% summarise(across(all_of(variables_numericas), list(mean = ~ mean(.x, na.rm = TRUE),
+    summary_stats <- datos_liga %>% summarise(across(all_of(variables_numericas_preseleccion), list(mean = ~ mean(.x, na.rm = TRUE),
                                                                                        sd = ~ sd(.x, na.rm = TRUE),
                                                                                        min = ~ min(.x, na.rm = TRUE),
                                                                                        `25%` = ~ quantile(.x, 0.25, na.rm = TRUE),
@@ -756,7 +830,7 @@ for (liga in unique(datos_originales$League)) {
     
     # Visualización: Boxplot por liga
     plots <- list()
-    for (var in variables_numericas) {
+    for (var in variables_numericas_preseleccion) {
       p <- ggplot(datos_liga, aes(x = League, y = .data[[var]])) +
         geom_boxplot() +
         labs(title = paste("Boxplot de", var, "por liga"), x = "Liga", y = var) +
