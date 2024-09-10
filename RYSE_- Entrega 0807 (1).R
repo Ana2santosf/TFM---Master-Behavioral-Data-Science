@@ -258,7 +258,7 @@ write.xlsx(desc_stats_agrupadas_sin_extremos, file = file.path(ruta_descriptivos
 
 
 
-# Filtrar los jugadores con más de 50 partidas
+# Filtrar los nombres de jugadores con más de 50 partidas
 jugadores_mas_de_50 <- partidas_por_jugador %>%
   filter(num_partidas > 50) %>%
   pull(summonerName)
@@ -272,6 +272,16 @@ datos_filtrados_mas_de_50 <- datos_sin_extremos %>%
 write.xlsx(datos_filtrados_mas_de_50, file = file.path(ruta_datos, "Datos_Filtrados_Mas_de_50_Partidas.xlsx"), overwrite = TRUE)
 
 
+
+
+# Filtrar los nombres de jugadores con menos de (o igual a) 50 partidas
+jugadores_menos_igual_50 <- partidas_por_jugador %>%
+  filter(num_partidas <= 50) %>%
+  pull(summonerName)
+
+# Filtrar los datos de jugadores con más de 50 partidas
+datos_filtrados_menos_igual_50 <- datos_sin_extremos %>%
+  filter(summonerName %in% jugadores_menos_igual_50)
 
 
 # CALCULAR ESTADÍSTICAS DESCRIPTIVAS AGRUPADAS
@@ -380,7 +390,6 @@ ggsave(filename = file.path(ruta_graficos, "Histograma_Player_WR_Mas_50.png"), p
 
 
 
-#### ESTE GRAFICO NO SE GENERA!!!!!
 # Crear un histograma de la distribución de 'player.WR' para jugadores con <= 50 partidas
 p2 <- ggplot(datos_filtrados_menos_igual_50, aes(x = player.WR)) +
   geom_histogram(binwidth = 0.05, fill = "blue", color = "black", alpha = 0.7) +
