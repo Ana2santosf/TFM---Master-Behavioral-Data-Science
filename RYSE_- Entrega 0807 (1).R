@@ -380,7 +380,6 @@ ggsave(filename = file.path(ruta_graficos, "Histograma_Player_WR_Mas_50.png"), p
 
 
 
-#### ESTE GRAFICO NO SE GENERA!!!!!
 # Crear un histograma de la distribución de 'player.WR' para jugadores con <= 50 partidas
 p2 <- ggplot(datos_filtrados_menos_igual_50, aes(x = player.WR)) +
   geom_histogram(binwidth = 0.05, fill = "blue", color = "black", alpha = 0.7) +
@@ -514,14 +513,6 @@ loadings(pcr_model)
 
 
 
-######
-############################
-################### REVISAR DE AQUI PARA ABAJO
-
-
-###FALTA REVISAR Y GUARDAR EN CARPETAS CORRESPONDIENTES DE AQUI PARA ABAJO
-
-
 # 6.2.
 # Análisis individualizado por liga (datos sin extremos)
 analisis_por_liga <- datos_agrupados_finales %>%
@@ -543,9 +534,12 @@ analisis_por_liga <- analisis_por_liga %>%
 # Mostrar el resultado
 print(analisis_por_liga)
 
-# Guardar en un archivo CSV
-write.csv(analisis_por_liga, "analisis_por_liga.csv", row.names = FALSE)
-##################
+# Convertir el análisis por liga en un data.frame
+analisis_por_liga_df <- as.data.frame(analisis_por_liga)
+
+# Guardar el análisis por liga en formato Excel en la carpeta de Modelización
+write.xlsx(analisis_por_liga_df, file = file.path(ruta_modelizacion, "Analisis_Por_Liga.xlsx"), overwrite = TRUE)
+
 
 
 
@@ -595,6 +589,29 @@ for (player in players) {
 # Verificar el resultado
 head(goldEarned_cumulative_quarter)
 
+
+# Guardar el análisis de oro acumulado por trimestre y cambios en Descriptivos
+write.xlsx(goldEarned_cumulative_quarter, file = file.path(ruta_descriptivos, "Gold_Earned_Cumulative_Per_Quarter.xlsx"), overwrite = TRUE)
+
+# Guardar los datos completos filtrados en Modelización
+write.xlsx(datos_filtrados_mas_de_50, file = file.path(ruta_modelizacion, "Datos_Filtrados_Mas_de_50_con_Oro_Acumulado.xlsx"), overwrite = TRUE)
+
+
+
+
+
+
+
+
+
+
+
+######
+############################
+################### REVISAR DE AQUI PARA ABAJO
+
+
+###FALTA REVISAR Y GUARDAR EN CARPETAS CORRESPONDIENTES DE AQUI PARA ABAJO
 
 
 
