@@ -756,32 +756,37 @@ BD.kml$clusters_2 <- getClusters(cldGE, 2)
 BD.kml$clusters_5 <- getClusters(cldGE, 5)
 
 # Reshape a formato long para ambas agrupaciones de clusters
-BD.kml_long_2 <- BD.kml %>%
+BD.kml_long <- BD.kml %>%
   pivot_longer(cols = starts_with("quarter_"), 
                names_to = "quarter", 
                values_to = "goldEarned_total") %>%
   mutate(quarter = as.numeric(gsub("quarter_", "", quarter)))
 
-BD.kml_long_5 <- BD.kml_long_2  # Reutilizamos los datos en formato long para los 5 clusters
-BD.kml_long_5$clusters <- BD.kml$clusters_5
+# Crear columnas de clusters para ambos casos en el dataframe long
+BD.kml_long_2 <- BD.kml_long %>%
+  mutate(clusters = clusters_2)  # Clusters con 2 particiones
+
+BD.kml_long_5 <- BD.kml_long %>%
+  mutate(clusters = clusters_5)  # Clusters con 5 particiones
 
 
 # Visualizar el rendimiento de los jugadores en cada cluster
-# Gráfico de 2 clusters
-p1 <- ggplot(BD.kml_long_2, aes(x = quarter, y = goldEarned_total, color = as.factor(clusters_2), group = summonerName)) +
+# Gráfico de 2 clusters (y lo guardamos)
+png(file = file.path(ruta_graficos, "trayectorias_oro_acumulado_2_clusters.png"))
+ggplot(BD.kml_long_2, aes(x = quarter, y = goldEarned_total, color = as.factor(clusters), group = summonerName)) +
   geom_line() +
   labs(title = "Trayectorias de oro acumulado (2 clusters)", x = "Quarter", y = "Oro acumulado", color = "Cluster") +
   theme_minimal()
+dev.off()
 
 # Gráfico de 5 clusters
-p2 <- ggplot(BD.kml_long_5, aes(x = quarter, y = goldEarned_total, color = as.factor(clusters), group = summonerName)) +
+png(file = file.path(ruta_graficos, "trayectorias_oro_acumulado_5_clusters.png"))
+ggplot(BD.kml_long_5, aes(x = quarter, y = goldEarned_total, color = as.factor(clusters), group = summonerName)) +
   geom_line() +
   labs(title = "Trayectorias de oro acumulado (5 clusters)", x = "Quarter", y = "Oro acumulado", color = "Cluster") +
   theme_minimal()
+dev.off()
 
-# Mostrar los dos gráficos
-print(p1)
-print(p2)
 
 
 
