@@ -646,6 +646,9 @@ loadings(pcr_model_con_interacciones)
 # 6.2.
 # ANÁLISIS LONGITUDINAL Y CLUSTERING
 
+# Verificar si hay datos faltantes en nuestra BBDD: vemos que no hay (ergo no hace falta imputar)
+colSums(is.na(datos_filtrados_mas_de_50))
+
 
 # Dividir partidas en trimestres
 datos_filtrados_mas_de_50 <- datos_filtrados_mas_de_50 %>%
@@ -675,7 +678,7 @@ print(goldEarned_summary_per_quarter)
 write.xlsx(goldEarned_summary_per_quarter, file = file.path(ruta_descriptivos, "Oro_acumulado_por_trimestre_por_jugador.xlsx"), overwrite = TRUE)
 
 
-# Separar nuestros datos entre jugadores UTILITY y los que no (razon: los UTILITY casi no ganan oro, y por tanot deben ser medidos de manera separada, al ser un rol que se ocupa de tareas de control, no de ataque)
+# Separar nuestros datos entre jugadores UTILITY y los que no (razon: los UTILITY casi no ganan oro, y por tanto deben ser medidos de manera separada, al ser un rol que se ocupa de tareas de control, no de ataque)
 goldEarned_per_quarter_utility <- goldEarned_per_quarter %>%
   filter(summonerName %in% datos_filtrados_mas_de_50$summonerName[datos_filtrados_mas_de_50$teamPosition == "UTILITY"])
 
@@ -717,62 +720,72 @@ dev.off()
 
 
 
+# EJECUTANDO EL CLUSTERING (EN BASE AL CODIGO QUE DAVID PROPOCIONO)
+# Formatear datos a wide format, para que haya una columna por cada trimestre y una fila por cada jugador, para que pueda operar el paquete kml3d
+BD.kml <- goldEarned_per_quarter %>%
+  select(summonerName, quarter, goldEarned_total) %>%
+  pivot_wider(names_from = quarter, values_from = goldEarned_total, names_prefix = "quarter_")
+
+# Crear objeto para los clusterings longitudinales y base de datos resultante
+cldGE <- cld3d(data.frame(BD.kml), timeInData = list(goldearned = 2:5)) 
+kml3d(cldGE, nbRedrawing = 50)
+
+# Estudiar performance de las distintas soluciones según nº de particiones
+listPart <- listPartition()
+listPart['criterionActif'] <- CRITERION_NAMES[1]
+for (i in 2:5) {
+  listPart["add"] <- partition(getClusters(cldGE, i), cldGE)
+  ordered(listPart)
+}
+
+# Visualizar los criterios para diferentes números de particiones: 
+plotAllCriterion(listPart) 
+
+# Guardar los resultados de clustering en un archivo
+write.xlsx(BD.kml, file = file.path(ruta_modelizacion, "Clustering_oro_acumulado_por_jugador.xlsx"), overwrite = TRUE)
+
+
+# Parece que podemos seguir dos vias:
+# Primera via: Tres de los cinco criterios nos dicen que 2 particiones es mejor...
+# Segunda via: Dos de los cinco criterios nos dicen que 5 particiones es mejor...
+# Por tanto creamos dos variables (una con 2 clusters y otra con 5 clusters) y luego generamos gráficos para compararlas
+
+
+# Asignar clusters con 2 y 5 particiones
+BD.kml$clusters_2 <- getClusters(cldGE, 2)
+BD.kml$clusters_5 <- getClusters(cldGE, 5)
+
+# Reshape a formato long para ambas agrupaciones de clusters
+BD.kml_long_2 <- BD.kml %>%
+  pivot_longer(cols = starts_with("quarter_"), 
+               names_to = "quarter", 
+               values_to = "goldEarned_total") %>%
+  mutate(quarter = as.numeric(gsub("quarter_", "", quarter)))
+
+BD.kml_long_5 <- BD.kml_long_2  # Reutilizamos los datos en formato long para los 5 clusters
+BD.kml_long_5$clusters <- BD.kml$clusters_5
+
+
+# Visualizar el rendimiento de los jugadores en cada cluster
+# Gráfico de 2 clusters
+p1 <- ggplot(BD.kml_long_2, aes(x = quarter, y = goldEarned_total, color = as.factor(clusters_2), group = summonerName)) +
+  geom_line() +
+  labs(title = "Trayectorias de oro acumulado (2 clusters)", x = "Quarter", y = "Oro acumulado", color = "Cluster") +
+  theme_minimal()
+
+# Gráfico de 5 clusters
+p2 <- ggplot(BD.kml_long_5, aes(x = quarter, y = goldEarned_total, color = as.factor(clusters), group = summonerName)) +
+  geom_line() +
+  labs(title = "Trayectorias de oro acumulado (5 clusters)", x = "Quarter", y = "Oro acumulado", color = "Cluster") +
+  theme_minimal()
+
+# Mostrar los dos gráficos
+print(p1)
+print(p2)
 
 
 
-
-
-# 
-# 
-# # Calcular el cambio de oro acumulado por trimestres
-# # Inicializar la columna para el cambio de oro
-# goldEarned_per_quarter$gold_change <- NA
-# 
-# # Lista de jugadores únicos
-# players <- unique(goldEarned_per_quarter$summonerName)
-# 
-# # Bucle para calcular el cambio de oro acumulado por trimestre
-# for (player in players) {
-#   # Subconjunto de datos para el jugador actual
-#   player_data <- goldEarned_per_quarter %>%
-#     filter(summonerName == player)
-#   
-#   # Calcular el cambio de oro acumulado
-#   for (i in 2:nrow(player_data)) {
-#     # Encontrar la fila correspondiente en el dataframe original
-#     goldEarned_per_quarter$gold_change[
-#       goldEarned_per_quarter$summonerName == player & 
-#         goldEarned_per_quarter$quarter == player_data$quarter[i]] <- 
-#       player_data$goldEarned_cumulative[i] - player_data$goldEarned_cumulative[i - 1]
-#   }
-# }
-# 
-# # Verificar el resultado
-# head(goldEarned_per_quarter)
-# 
-# 
-# 
-# 
-# # Visualizar oro acumulado por trimestres (subconjunto de jugadores)
-# subconjunto_jugadores <- sample(unique(goldEarned_per_quarter$summonerName), 10)
-# 
-# goldEarned_per_quarter_subconjunto <- goldEarned_per_quarter %>%
-#   filter(summonerName %in% subconjunto_jugadores)
-# 
-# ggplot(goldEarned_per_quarter_subconjunto, aes(x = quarter, y = goldEarned_cumulative, color = summonerName)) +
-#   geom_line() +
-#   labs(title = "Oro Acumulado por trimestre",
-#        x = "Quarter",
-#        y = "Oro Acumulado") +
-#   theme_minimal()
-# 
-
-
-
-
-
-
-#### EJEMPLO DE CLUSTERING (DAVID)
+#### EJEMPLO DE CLUSTERING (DAVID) #### 
 
 # Wide format para que pueda operar el paquete kml3d
 BD.kml <- goldEarned_per_quarter %>%  
