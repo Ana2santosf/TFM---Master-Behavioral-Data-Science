@@ -35,6 +35,8 @@ ruta_depuracion <- file.path(ruta, "Depuracion_y_creacion_de_variables")
 ruta_descriptivos <- file.path(ruta, "Descriptivos")
 ruta_modelizacion <- file.path(ruta, "Modelizacion")
 ruta_graficos <- file.path(ruta, "Graficos")
+ruta_graficos_medias <- file.path(ruta_graficos, "Graficos - medias de variables")
+ruta_graficos_mediana <- file.path(ruta_graficos, "Graficos - medianas de variables")
 ruta_informe <- file.path(ruta, "Informe")
 
 
@@ -44,6 +46,8 @@ dir.create(ruta_depuracion, recursive = TRUE, showWarnings = FALSE)
 dir.create(ruta_descriptivos, recursive = TRUE, showWarnings = FALSE)
 dir.create(ruta_modelizacion, recursive = TRUE, showWarnings = FALSE)
 dir.create(ruta_graficos, recursive = TRUE, showWarnings = FALSE)
+dir.create(ruta_graficos_medias, recursive = TRUE, showWarnings = FALSE)
+dir.create(ruta_graficos_medianas, recursive = TRUE, showWarnings = FALSE)
 
 
 # Leer los datos desde la carpeta Datos
@@ -219,9 +223,6 @@ write.xlsx(freq_abs_rel, file = file.path(ruta_descriptivos, "Frecuencias_Absolu
 write.xlsx(freq_abs_rel, file = file.path(ruta_descriptivos, "Frecuencias_Absolutas_y_Relativas.xlsx"), overwrite = TRUE)
 
 
-
-
-######################
 #  FILTRADO DE JUGADORES EXTREMOS (Win Rate de 0 y 1 y jugadores con más de 100 partidas)
 
 # Filtrar jugadores con Win Rate 0 o 1 y aquellos con más de 100 partidas
@@ -238,8 +239,6 @@ datos_sin_extremos <- datos_originales %>%
 # Guardar los datos sin jugadores extremos
 write.xlsx(datos_sin_extremos, file = file.path(ruta_depuracion, "Datos_Sin_Extremos.xlsx"), overwrite = TRUE)
 
-
-#############################
 
 # Calcular estadísticas descriptivas para los datos sin jugadores extremos
 desc_stats_agrupadas_sin_extremos <- datos_sin_extremos %>%
@@ -337,15 +336,6 @@ print("Estadísticas descriptivas para datos agrupados, sin extremos y con filtr
 print(desc_stats_agrupados_filtrado_final)
 
 
-################
-###############
-
-################################################
-################################################
-################################################
-################################################
-################################################
-################################################
 
 # SECCIÓN 4: VISUALIZACIÓN DE DATOS (HISTOGRAMAS Y BOXPLOTS)
 
@@ -362,8 +352,6 @@ p_hist_wr <- ggplot(datos_originales, aes(x = player.WR)) +
 ggsave(filename = file.path(ruta_graficos, "Histograma_player.WR.png"), plot = p_hist_wr, device = "png")
 
 
-
-
 # Crear un histograma del número de partidas por jugador (vemos que hay una observacion atipica de 150+ partidas jugadas)
 p_hist_partidas <- ggplot(partidas_por_jugador, aes(x = num_partidas)) +
   geom_histogram(binwidth = 1, fill = "blue", color = "black", alpha = 0.7) +
@@ -375,8 +363,6 @@ p_hist_partidas <- ggplot(partidas_por_jugador, aes(x = num_partidas)) +
 # Guardar el histograma como archivo PNG en la carpeta 'Graficos'
 ggsave(filename = file.path(ruta_graficos, "Histograma_Partidas_Por_Jugador.png"), plot = p_hist_partidas, device = "png")
 
-
-
 # Crear un histograma de la distribución de 'player.WR' para jugadores con > 50 partidas
 p <- ggplot(datos_filtrados_mas_de_50, aes(x = player.WR)) +
   geom_histogram(binwidth = 0.05, fill = "blue", color = "black", alpha = 0.7) +
@@ -387,8 +373,6 @@ p <- ggplot(datos_filtrados_mas_de_50, aes(x = player.WR)) +
 
 # Guardar el histograma como archivo PNG en la carpeta 'Graficos'
 ggsave(filename = file.path(ruta_graficos, "Histograma_Player_WR_Mas_50.png"), plot = p, device = "png", width = 8, height = 6)
-
-
 
 # Crear un histograma de la distribución de 'player.WR' para jugadores con <= 50 partidas
 p2 <- ggplot(datos_filtrados_menos_igual_50, aes(x = player.WR)) +
@@ -410,8 +394,7 @@ ggsave(filename = file.path(ruta_graficos, "Histograma_Player_WR_Menos_Igual_50.
 
 ### MÁS HISTOGRAMAS Y BOXPLOTS
 
-
-# Crear histogramas para variables numéricas agrupadas (media)
+# Crear histogramas para variables numéricas agrupadas (MEDIA)
 for (var in variables_numericas_preseleccion) {
   var_mean <- paste0(var, ".mean")
   if (var_mean %in% colnames(datos_agrupados_finales)) {
@@ -430,14 +413,14 @@ for (var in variables_numericas_preseleccion) {
         axis.text = element_text(size = 10)
       )
     print(p)  # Visualizar el gráfico en la consola
-    ggsave(filename = file.path(ruta_graficos, paste0("Histograma_", var, "_Media.png")), plot = p, device = "png")
-    cat("Histograma de", var, "exportado correctamente como PNG en", ruta_graficos, "\n")
+    ggsave(filename = file.path(ruta_graficos_medias, paste0("Histograma_", var, "_Media.png")), plot = p, device = "png")
+    cat("Histograma de", var, "exportado correctamente como PNG en", ruta_graficos_medias, "\n")
   } else {
     cat("La variable", var_mean, "no se encuentra en el dataset.\n")
   }
 }
 
-# Crear boxplots para variables numéricas agrupadas (media) categorizadas por 'teamPosition'
+# Crear boxplots para variables numéricas agrupadas (MEDIA) categorizadas por 'teamPosition'
 for (var in variables_numericas_preseleccion) {
   var_mean <- paste0(var, ".mean")
   if (var_mean %in% colnames(datos_agrupados_finales)) {
@@ -454,12 +437,64 @@ for (var in variables_numericas_preseleccion) {
         axis.text = element_text(size = 10)
       )
     print(p)  # Visualizar el gráfico en la consola
-    ggsave(filename = file.path(ruta_graficos, paste0("Boxplot_", var, "_Media_por_teamPosition.png")), plot = p, device = "png")
-    cat("Boxplot de", var, "por teamPosition exportado correctamente como PNG en", ruta_graficos, "\n")
+    ggsave(filename = file.path(ruta_graficos_medias, paste0("Boxplot_", var, "_Media_por_teamPosition.png")), plot = p, device = "png")
+    cat("Boxplot de", var, "por teamPosition exportado correctamente como PNG en", ruta_graficos_medias, "\n")
   } else {
     cat("La variable", var_mean, "no se encuentra en el dataset.\n")
   }
 }
+
+
+# Crear histogramas para variables numéricas agrupadas (MEDIANA)
+for (var in variables_numericas_preseleccion) {
+  var_median <- paste0(var, ".median")
+  if (var_median %in% colnames(datos_agrupados_finales)) {
+    p <- ggplot(datos_agrupados_finales, aes(x = .data[[var_median]])) +
+      geom_histogram(fill = "darkorange", color = "black", alpha = 0.7) +
+      labs(title = paste("Histograma de", var, "Mediana"),
+           x = paste(var, "Mediana"),
+           y = "Frecuencia") +
+      theme_minimal() +
+      theme(
+        plot.background = element_rect(fill = "white", color = NA),
+        panel.background = element_rect(fill = "white", color = NA),
+        plot.title = element_text(hjust = 0.5, size = 14, face = "bold"),
+        axis.title.x = element_text(size = 12),
+        axis.title.y = element_text(size = 12),
+        axis.text = element_text(size = 10)
+      )
+    print(p)  # Visualizar el gráfico en la consola
+    ggsave(filename = file.path(ruta_graficos_medianas, paste0("Histograma_", var, "_Mediana.png")), plot = p, device = "png")
+    cat("Histograma de", var, "exportado correctamente como PNG en", ruta_graficos_medianas, "\n")
+  } else {
+    cat("La variable", var_median, "no se encuentra en el dataset.\n")
+  }
+}
+
+# Crear boxplots para variables numéricas agrupadas (MEDIANA) categorizadas por 'teamPosition'
+for (var in variables_numericas_preseleccion) {
+  var_median <- paste0(var, ".median")
+  if (var_median %in% colnames(datos_agrupados_finales)) {
+    p <- ggplot(datos_agrupados_finales, aes(x = teamPosition, y = .data[[var_median]])) +
+      geom_boxplot() +
+      labs(title = paste("Boxplot de", var, "Mediana por teamPosition"), x = "teamPosition", y = var) +
+      theme_minimal() +
+      theme(
+        plot.background = element_rect(fill = "white", color = NA),
+        panel.background = element_rect(fill = "white", color = NA),
+        plot.title = element_text(hjust = 0.5, size = 14, face = "bold"),
+        axis.title.x = element_text(size = 12),
+        axis.title.y = element_text(size = 12),
+        axis.text = element_text(size = 10)
+      )
+    print(p)  # Visualizar el gráfico en la consola
+    ggsave(filename = file.path(ruta_graficos_medianas, paste0("Boxplot_", var, "_Mediana_por_teamPosition.png")), plot = p, device = "png")
+    cat("Boxplot de", var, "por teamPosition exportado correctamente como PNG en", ruta_graficos_medianas, "\n")
+  } else {
+    cat("La variable", var_median, "no se encuentra en el dataset.\n")
+  }
+}
+
 
 
 
@@ -618,63 +653,121 @@ datos_filtrados_mas_de_50 <- datos_filtrados_mas_de_50 %>%
   mutate(quarter = ceiling(row_number() / (n() / 4))) %>%
   ungroup()
 
-# Calcular oro acumulado por trimestres
-goldEarned_cumulative_quarter <- datos_filtrados_mas_de_50 %>%
+# Calcular oro acumulado por trimestre para cada jugador
+goldEarned_per_quarter <- datos_filtrados_mas_de_50 %>%
   group_by(summonerName, quarter) %>%
-  summarise(goldEarned_cumulative = sum(goldEarned, na.rm = TRUE))
+  summarise(goldEarned_total = sum(goldEarned, na.rm = TRUE))
 
-# Unir la columna 'goldEarned_cumulative' a los datos filtrados
+# Unir la columna 'goldEarned_per_quarter' a los datos filtrados
 datos_filtrados_mas_de_50 <- datos_filtrados_mas_de_50 %>%
-  left_join(goldEarned_cumulative_quarter, by = c("summonerName", "quarter"))
+  left_join(goldEarned_per_quarter, by = c("summonerName", "quarter"))
+
+# Calcular estadisticas descriptivas para goldEarned por trimestre
+goldEarned_summary_per_quarter <- goldEarned_per_quarter %>%
+  group_by(quarter) %>%
+  summarise(mean_gold = mean(goldEarned_total, na.rm = TRUE),
+            median_gold = median(goldEarned_total, na.rm = TRUE),
+            sd_gold = sd(goldEarned_total, na.rm = TRUE))
+
+print(goldEarned_summary_per_quarter)
+
+# Guardar estadisticas descriptivas para goldEarned por trimestre en un archivo
+write.xlsx(goldEarned_summary_per_quarter, file = file.path(ruta_descriptivos, "Oro_acumulado_por_trimestre_por_jugador.xlsx"), overwrite = TRUE)
 
 
-# Calcular el cambio de oro acumulado por trimestres
-# Inicializar la columna para el cambio de oro
-goldEarned_cumulative_quarter$gold_change <- NA
+# Separar nuestros datos entre jugadores UTILITY y los que no (razon: los UTILITY casi no ganan oro, y por tanot deben ser medidos de manera separada, al ser un rol que se ocupa de tareas de control, no de ataque)
+goldEarned_per_quarter_utility <- goldEarned_per_quarter %>%
+  filter(summonerName %in% datos_filtrados_mas_de_50$summonerName[datos_filtrados_mas_de_50$teamPosition == "UTILITY"])
 
-# Lista de jugadores únicos
-players <- unique(goldEarned_cumulative_quarter$summonerName)
+goldEarned_per_quarter_non_utility <- goldEarned_per_quarter %>%
+  filter(!summonerName %in% goldEarned_per_quarter_utility$summonerName)
 
-# Bucle para calcular el cambio de oro acumulado por trimestre
-for (player in players) {
-  # Subconjunto de datos para el jugador actual
-  player_data <- goldEarned_cumulative_quarter %>%
-    filter(summonerName == player)
-  
-  # Calcular el cambio de oro acumulado
-  for (i in 2:nrow(player_data)) {
-    # Encontrar la fila correspondiente en el dataframe original
-    goldEarned_cumulative_quarter$gold_change[
-      goldEarned_cumulative_quarter$summonerName == player & 
-        goldEarned_cumulative_quarter$quarter == player_data$quarter[i]] <- 
-      player_data$goldEarned_cumulative[i] - player_data$goldEarned_cumulative[i - 1]
-  }
-}
+# Extraer 15 jugadores de UTILITY y las demas posiciones, para fines de visualizacion
+utility_players_sample <- sample(unique(goldEarned_per_quarter_utility$summonerName), 15)
+non_utility_players_sample <- sample(unique(goldEarned_per_quarter_non_utility$summonerName), 15)
 
-# Verificar el resultado
-head(goldEarned_cumulative_quarter)
+# Filtrar dataset para solo incluir 15 jugadores (UTILITY y otras posiciones)
+goldEarned_utility_sample <- goldEarned_per_quarter_utility %>%
+  filter(summonerName %in% utility_players_sample)
+
+goldEarned_non_utility_sample <- goldEarned_per_quarter_non_utility %>%
+  filter(summonerName %in% non_utility_players_sample)
 
 
-
-
-###ESTO NO SE SI SERIA MEJOR NO PONERLO O CAMBIARLO....
-#Unir la columna 'gold_change' a los datos filtrados
-datos_filtrados_mas_de_50 <- datos_filtrados_mas_de_50 %>%
-  left_join(goldEarned_cumulative_quarter %>% select(summonerName, quarter, gold_change), 
-            by = c("summonerName", "quarter"))
-
-# Visualizar oro acumulado por trimestres (subconjunto de jugadores)
-subconjunto_jugadores <- sample(unique(goldEarned_cumulative_quarter$summonerName), 10)
-
-goldEarned_cumulative_quarter_subconjunto <- goldEarned_cumulative_quarter %>%
-  filter(summonerName %in% subconjunto_jugadores)
-
-ggplot(goldEarned_cumulative_quarter_subconjunto, aes(x = quarter, y = goldEarned_cumulative, color = summonerName)) +
+# Visualizar el rendimiento de las posiciones UTILITY (muestra)
+png(file = file.path(ruta_graficos, "goldEarned_UTILITY_muestra.png"))
+ggplot(goldEarned_utility_sample, aes(x = quarter, y = goldEarned_total, color = summonerName, group = summonerName)) +
   geom_line() +
-  labs(title = "Oro Acumulado por trimestre",
+  labs(title = "goldEarned por trimestre para UTILITY (muestra)",
        x = "Quarter",
-       y = "Oro Acumulado") +
+       y = "Total Gold Earned (Utility)") +
   theme_minimal()
+dev.off()
+
+# Visualizar  el rendimiento de las posiciones NO UTILITY (muestra)
+png(file = file.path(ruta_graficos, "goldEarned_NO_UTILITY_muestra.png"))
+ggplot(goldEarned_non_utility_sample, aes(x = quarter, y = goldEarned_total, color = summonerName, group = summonerName)) +
+  geom_line() +
+  labs(title = "goldEarned por trimestre para NO UTILITY (muestra)",
+       x = "Quarter",
+       y = "Total Gold Earned (Non-Utility)") +
+  theme_minimal()
+dev.off()
+
+
+
+
+
+
+
+
+
+# 
+# 
+# # Calcular el cambio de oro acumulado por trimestres
+# # Inicializar la columna para el cambio de oro
+# goldEarned_per_quarter$gold_change <- NA
+# 
+# # Lista de jugadores únicos
+# players <- unique(goldEarned_per_quarter$summonerName)
+# 
+# # Bucle para calcular el cambio de oro acumulado por trimestre
+# for (player in players) {
+#   # Subconjunto de datos para el jugador actual
+#   player_data <- goldEarned_per_quarter %>%
+#     filter(summonerName == player)
+#   
+#   # Calcular el cambio de oro acumulado
+#   for (i in 2:nrow(player_data)) {
+#     # Encontrar la fila correspondiente en el dataframe original
+#     goldEarned_per_quarter$gold_change[
+#       goldEarned_per_quarter$summonerName == player & 
+#         goldEarned_per_quarter$quarter == player_data$quarter[i]] <- 
+#       player_data$goldEarned_cumulative[i] - player_data$goldEarned_cumulative[i - 1]
+#   }
+# }
+# 
+# # Verificar el resultado
+# head(goldEarned_per_quarter)
+# 
+# 
+# 
+# 
+# # Visualizar oro acumulado por trimestres (subconjunto de jugadores)
+# subconjunto_jugadores <- sample(unique(goldEarned_per_quarter$summonerName), 10)
+# 
+# goldEarned_per_quarter_subconjunto <- goldEarned_per_quarter %>%
+#   filter(summonerName %in% subconjunto_jugadores)
+# 
+# ggplot(goldEarned_per_quarter_subconjunto, aes(x = quarter, y = goldEarned_cumulative, color = summonerName)) +
+#   geom_line() +
+#   labs(title = "Oro Acumulado por trimestre",
+#        x = "Quarter",
+#        y = "Oro Acumulado") +
+#   theme_minimal()
+# 
+
+
 
 
 
@@ -682,7 +775,7 @@ ggplot(goldEarned_cumulative_quarter_subconjunto, aes(x = quarter, y = goldEarne
 #### EJEMPLO DE CLUSTERING (DAVID)
 
 # Wide format para que pueda operar el paquete kml3d
-BD.kml <- goldEarned_cumulative_quarter %>%  
+BD.kml <- goldEarned_per_quarter %>%  
   select(summonerName, quarter, goldEarned_cumulative) %>%
   gather(variable, value, -(summonerName:quarter)) %>%
   unite(temp,variable,quarter) %>% 
