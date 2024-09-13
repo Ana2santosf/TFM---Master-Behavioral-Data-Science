@@ -47,7 +47,7 @@ dir.create(ruta_descriptivos, recursive = TRUE, showWarnings = FALSE)
 dir.create(ruta_modelizacion, recursive = TRUE, showWarnings = FALSE)
 dir.create(ruta_graficos, recursive = TRUE, showWarnings = FALSE)
 dir.create(ruta_graficos_medias, recursive = TRUE, showWarnings = FALSE)
-dir.create(ruta_graficos_medianas, recursive = TRUE, showWarnings = FALSE)
+dir.create(ruta_graficos_mediana , recursive = TRUE, showWarnings = FALSE)
 
 
 # Leer los datos desde la carpeta Datos
@@ -528,7 +528,7 @@ print(cor_matrix)
 datos_filtrados_mas_de_50_numericas <- datos_filtrados_mas_de_50 %>%
   select_if(is.numeric) %>%                     # Mantener solo variables numéricas
   select_if(~ var(.) > 0) %>%                   # Eliminar columnas con varianza cero
-  select(-Partida, -goldEarnedPerMinute, -quarter, -goldEarned_cumulative)  # Eliminar variables no útiles
+  select(-Partida, -goldEarnedPerMinute)  # Eliminar variables no útiles
 
 # Realizar PCA sobre todas las variables
 pca_todas_variables <- prcomp(datos_filtrados_mas_de_50_numericas, center = TRUE, scale. = TRUE)
@@ -558,7 +558,7 @@ variables_numericas_preseleccion <- c("goldEarned", "kills", "deaths", "assists"
                          "player.WR", "turretKills", "totalMinionsKilled", "totalTimeCCDealt", 
                          "baronKills", "dragonKills", "totalDamageDealt", 
                          "totalDamageTaken", "totalDamageDealtToChampions", 
-                         "damageDealtToObjectives", "goldEarnedPerMinute")
+                         "damageDealtToObjectives", "goldEarnedPerMinute", "visionScore")
 
 # Extraer los datos filtrados (solo variables numéricas)
 datos_pca_variables_preseleccionadas <- select(datos_filtrados_mas_de_50, all_of(variables_numericas_preseleccion))
@@ -664,6 +664,8 @@ goldEarned_per_quarter <- datos_filtrados_mas_de_50 %>%
 # Unir la columna 'goldEarned_per_quarter' a los datos filtrados
 datos_filtrados_mas_de_50 <- datos_filtrados_mas_de_50 %>%
   left_join(goldEarned_per_quarter, by = c("summonerName", "quarter"))
+
+
 
 # Calcular estadisticas descriptivas para goldEarned por trimestre
 goldEarned_summary_per_quarter <- goldEarned_per_quarter %>%
@@ -794,7 +796,7 @@ dev.off()
 
 # Wide format para que pueda operar el paquete kml3d
 BD.kml <- goldEarned_per_quarter %>%  
-  select(summonerName, quarter, goldEarned_cumulative) %>%
+  select(summonerName, quarter, goldEarned_total) %>%
   gather(variable, value, -(summonerName:quarter)) %>%
   unite(temp,variable,quarter) %>% 
   spread(temp, value)
@@ -820,7 +822,7 @@ BD.kml$clusters <- getClusters(cldGE, 5)
 
 
 
-
+#####REVISADO HASTA AQUI PARA QUE TODO FUNCIONE CORRECTAMENTE#####
 
 
 # 6.5. 
