@@ -743,6 +743,15 @@ for (i in 2:5) {
 # Visualizar los criterios para diferentes números de particiones: 
 plotAllCriterion(listPart) 
 
+# Parece que podemos seguir dos vias:
+# Primera via: Tres de los cinco criterios nos dicen que 2 particiones es mejor...
+# Segunda via: Dos de los cinco criterios nos dicen que 5 particiones es mejor...
+
+# Asignar clusters con 2 y 5 particiones
+BD.kml$clusters_2 <- getClusters(cldGE, 2)
+BD.kml$clusters_5 <- getClusters(cldGE, 5)
+
+
 # Guardar los resultados de clustering en un archivo
 write.xlsx(BD.kml, file = file.path(ruta_modelizacion, "Clustering_oro_acumulado_por_jugador.xlsx"), overwrite = TRUE)
 
@@ -753,9 +762,6 @@ write.xlsx(BD.kml, file = file.path(ruta_modelizacion, "Clustering_oro_acumulado
 # Por tanto creamos dos variables (una con 2 clusters y otra con 5 clusters) y luego generamos gráficos para compararlas
 
 
-# Asignar clusters con 2 y 5 particiones
-BD.kml$clusters_2 <- getClusters(cldGE, 2)
-BD.kml$clusters_5 <- getClusters(cldGE, 5)
 
 # Reshape a formato long para ambas agrupaciones de clusters
 BD.kml_long <- BD.kml %>%
