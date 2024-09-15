@@ -640,7 +640,7 @@ cat("Modelo PCR y gráficos guardados correctamente.")
 loadings(pcr_model_con_interacciones)
 
 
-################### FALTA REVISAR DE AQUI PARA ABAJO + GUARDAR OUTPUTS EN CARPETAS CORRESPONDIENTES
+################### FALTA REVISAR DE AQUI PARA ABAJO + GUARDAR OUTPUTS EN CARPETAS CORRESPONDIENTES. HECHO
 
 
 # 6.2.
@@ -927,10 +927,10 @@ wb_regresion <- createWorkbook()
 # 6.5.1. REGRESIONES POR POSICIÓN
 
 # Crear modelo de regresión para cada posición
-for (position in unique(datos_originales$teamPosition)) {
+for (position in unique(datos_filtrados_mas_de_50$teamPosition)) {
   cat("\nModelo de regresión para la posición:", position, "\n")
   
-  datos_posicion <- datos_originales %>% filter(teamPosition == position)
+  datos_posicion <- datos_filtrados_mas_de_50 %>% filter(teamPosition == position)
   
   if (nrow(datos_posicion) > 0) {
     # Regresión múltiple
@@ -941,11 +941,11 @@ for (position in unique(datos_originales$teamPosition)) {
     writeData(wb_regresion, paste0("Regresion_", position), as.data.frame(summary_modelo$coefficients))
     
     # Visualización de los residuos del modelo
-    png(filename = paste0("Residuos_Modelo_Posicion_", gsub("/", "_", position), ".png"))
+    png(filename = file.path(ruta_graficos, paste0("Residuos_Modelo_Posicion_", gsub("/", "_", position), ".png")))
     par(mfrow = c(2, 2))
     plot(modelo)
     dev.off()
-    cat("Gráficos de residuos para la posición", position, "exportados correctamente.\n")
+    cat("Gráficos de residuos para la posición", position, "exportados correctamente a la carpeta graficos.\n")
   } else {
     cat("No hay suficientes datos para la posición:", position, "\n")
   }
@@ -954,10 +954,10 @@ for (position in unique(datos_originales$teamPosition)) {
 
 # 6.5.2. REGRESIONES POR LIGAS
 # Crear modelo de regresión para cada liga
-for (liga in unique(datos_originales$League)) {
+for (liga in unique(datos_filtrados_mas_de_50$League)) {
   cat("\nModelo de regresión para la liga:", liga, "\n")
   
-  datos_liga <- datos_originales %>% filter(League == liga)
+  datos_liga <- datos_filtrados_mas_de_50 %>% filter(League == liga)
   
   if (nrow(datos_liga) > 0) {
     # Regresión múltiple
@@ -968,19 +968,19 @@ for (liga in unique(datos_originales$League)) {
     writeData(wb_regresion, paste0("Regresion_", liga), as.data.frame(summary_modelo$coefficients))
     
     # Visualización de los residuos del modelo
-    png(filename = paste0("Residuos_Modelo_Liga_", gsub("/", "_", liga), ".png"))
+    png(filename = file.path(ruta_graficos, paste0("Residuos_Modelo_Liga_", gsub("/", "_", liga), ".png")))
     par(mfrow = c(2, 2))
     plot(modelo)
     dev.off()
-    cat("Gráficos de residuos para la liga", liga, "exportados correctamente.\n")
+    cat("Gráficos de residuos para la liga", liga, "exportados correctamente a la carpeta graficos.\n")
   } else {
     cat("No hay suficientes datos para la liga:", liga, "\n")
   }
 }
 
-# Guardar el archivo Excel
-saveWorkbook(wb_regresion, file = "Resultados_Regresiones.xlsx", overwrite = TRUE)
-cat("Resultados de las regresiones exportados correctamente a Excel.\n")
+#Guardar el archivo Excel en la ruta modelizacion
+saveWorkbook(wb_regresion, file = file.path(ruta_modelizacion, "Resultados_Regresiones_posicion_y_ligas.xlsx"), overwrite = TRUE)
+cat("Resultados de las regresiones exportados correctamente a Excel en la carpeta modelizacion.\n")
 
 
 
