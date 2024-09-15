@@ -900,9 +900,11 @@ for (liga in unique(datos_filtrados_mas_de_50$League)) {
       plots[[var]] <- p
     }
     
+  
     # Guardar todos los gráficos en un solo archivo de imagen
     g <- marrangeGrob(plots, nrow = 5, ncol = 4)
-    ggsave(filename = paste0("Boxplots_Liga_", gsub("/", "_", liga), ".png"), g, width = 16, height = 12)
+    ggsave(filename = file.path(ruta_graficos, paste0("Boxplots_Liga_", gsub("/", "_", liga), ".png")), 
+           g, width = 16, height = 12)
     cat("Boxplots para la liga", liga, "exportados correctamente.\n")
   } else {
     cat("No hay suficientes datos para la liga:", liga, "\n")
