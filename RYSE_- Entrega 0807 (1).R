@@ -20,7 +20,7 @@ install_and_load <- function(package) {
 }
 
 # Lista de liberias necesarias
-libraries <- c("tidyverse", "GGally", "caret", "plm", "ggplot2", "readxl", "openxlsx", "psych", "pls", "here", "kml3d")
+libraries <- c("tidyverse", "GGally", "caret", "plm", "ggplot2", "readxl", "openxlsx", "psych", "pls", "here", "kml3d", "gridExtra")
 
 # Ejecutar la función para cada libreria en la lista
 lapply(libraries, install_and_load)
@@ -798,37 +798,37 @@ dev.off()
 
 
 
-#### EJEMPLO DE CLUSTERING (DAVID) #### 
+#### EJEMPLO DE CLUSTERING (DAVID) #### NO MUESTRA MISMA CLASIFICACIÓN, NI MUESTRA LA 
+#MISMA PERFORMANCE EN LOS CRITERIOS. LO BORRAMOS IGUALMENTE?
 
 # Wide format para que pueda operar el paquete kml3d
-BD.kml <- goldEarned_per_quarter %>%  
+BD.kml2 <- goldEarned_per_quarter %>%  
   select(summonerName, quarter, goldEarned_total) %>%
   gather(variable, value, -(summonerName:quarter)) %>%
   unite(temp,variable,quarter) %>% 
   spread(temp, value)
 
 # Crear objeto para los clusterings longitudinales y base de datos resultante
-cldGE <- cld3d(data.frame(BD.kml),timeInData= list(goldearned=2:5))
-kml3d(cldGE,nbRedrawing=50) # Guarda las trayectorias en cldGE
+cldGE2 <- cld3d(data.frame(BD.kml2),timeInData= list(goldearned=2:5))
+kml3d(cldGE2,nbRedrawing=50) # Guarda las trayectorias en cldGE
 
 # Estudiar performance de las distintas soluciones según nº de particiones
-load('cldGE.Rdata')
+load('cldGE2.Rdata')
 
 listPart <- listPartition()
 listPart['criterionActif'] <-CRITERION_NAMES[1]
 for(i in 2:5){
-  listPart["add"] <- partition(getClusters(cldGE, i),cldGE)
+  listPart["add"] <- partition(getClusters(cldGE2, i),cldGE2)
   ordered(listPart)
 }
 
 plotAllCriterion(listPart) # Parece que en 3 de 5 criterios 2 particiones es mejor...
 
 # Cómo guardar pertenencia al cluster según solución escogida como óptima
-BD.kml$clusters <- getClusters(cldGE, 5)
+BD.kml2$clusters <- getClusters(cldGE2, 5)
 
 
 
-#####REVISADO HASTA AQUI PARA QUE TODO FUNCIONE CORRECTAMENTE#####
 
 
 # 6.5. 
@@ -863,28 +863,9 @@ write.csv(analisis_por_liga, "analisis_por_liga.csv", row.names = FALSE)
 
 ############ ESTO ESTA PENDIENTE DE INTEGRAR (ESTABA EN EL INICIO DEL CODIGO)
 # Análisis individualizado por liga (datos sin extremos)
-analisis_por_liga <- datos_agrupados_finales %>%
-  group_by(League) %>%
-  summarise(across(ends_with(".mean"), list(mean = ~ mean(.x, na.rm = TRUE),
-                                            sd = ~ sd(.x, na.rm = TRUE),
-                                            min = ~ min(.x, na.rm = TRUE),
-                                            `25%` = ~ quantile(.x, 0.25, na.rm = TRUE),
-                                            `50%` = ~ median(.x, na.rm = TRUE),
-                                            `75%` = ~ quantile(.x, 0.75, na.rm = TRUE),
-                                            max = ~ max(.x, na.rm = TRUE)))) %>%
-  pivot_longer(cols = -League, names_to = c("variable", "stat"), names_sep = "_")
-
-# Convertir las listas en columnas atómicas (ajustando según las columnas presentes)
-analisis_por_liga <- analisis_por_liga %>%
-  pivot_wider(names_from = stat, values_from = value) %>%
-  unnest(cols = c(mean, sd, min, `25%`, `50%`, `75%`, max))
-
-# Mostrar el resultado
-print(analisis_por_liga)
-
-# Guardar en un archivo CSV
-write.csv(analisis_por_liga, "analisis_por_liga.csv", row.names = FALSE)
+##LO QUITAMOS PORQUE ESTÁ REPETIDO JUSTO ARRIBA
 ######################
+
 
 
 
@@ -893,10 +874,10 @@ write.csv(analisis_por_liga, "analisis_por_liga.csv", row.names = FALSE)
 wb_liga <- createWorkbook()
 
 # Analizar rendimiento por liga
-for (liga in unique(datos_originales$League)) {
+for (liga in unique(datos_filtrados_mas_de_50$League)) {
   cat("\nAnálisis para la liga:", liga, "\n")
   
-  datos_liga <- datos_originales %>% filter(League == liga)
+  datos_liga <- datos_filtrados_mas_de_50 %>% filter(League == liga)
   
   if (nrow(datos_liga) > 0) {
     summary_stats <- datos_liga %>% summarise(across(all_of(variables_numericas_preseleccion), list(mean = ~ mean(.x, na.rm = TRUE),
@@ -920,7 +901,7 @@ for (liga in unique(datos_originales$League)) {
     }
     
     # Guardar todos los gráficos en un solo archivo de imagen
-    g <- marrangeGrob(plots, nrow = 2, ncol = 2)
+    g <- marrangeGrob(plots, nrow = 5, ncol = 4)
     ggsave(filename = paste0("Boxplots_Liga_", gsub("/", "_", liga), ".png"), g, width = 16, height = 12)
     cat("Boxplots para la liga", liga, "exportados correctamente.\n")
   } else {
@@ -929,8 +910,11 @@ for (liga in unique(datos_originales$League)) {
 }
 
 # Guardar el archivo Excel
-saveWorkbook(wb_liga, file = "Resultados_Analisis_Ligas.xlsx", overwrite = TRUE)
-cat("Resultados del análisis por liga exportados correctamente a Excel.\n")
+# Guardar el archivo Excel en la carpeta Descriptivos
+saveWorkbook(wb_liga, file = file.path(ruta_descriptivos, "Resultados_Analisis_Ligas.xlsx"), overwrite = TRUE)
+
+cat("Resultados del análisis por liga exportados correctamente a Excel en la carpeta Descriptivos.\n")
+
 
 # 6.5.
 # REGRESIONES
