@@ -643,8 +643,8 @@ loadings(pcr_model_con_interacciones)
 ################### FALTA REVISAR DE AQUI PARA ABAJO + GUARDAR OUTPUTS EN CARPETAS CORRESPONDIENTES
 
 
-# 6.2.
-# ANÁLISIS LONGITUDINAL Y CLUSTERING
+# 6.2. CLUSTERING LONGITUDINAL
+# 6.2.1. CLUSTERING CON VALORES ABSOLUTOS DE ORO ACUMULADO POR TIRMESTRE
 
 # Verificar si hay datos faltantes en nuestra BBDD: vemos que no hay (ergo no hace falta imputar)
 colSums(is.na(datos_filtrados_mas_de_50))
@@ -720,9 +720,14 @@ dev.off()
 
 
 
+# SEPARAR AQUI ABAJO ENTRE UTILITY Y NO
+
+
+
+
 # EJECUTANDO EL CLUSTERING (EN BASE AL CODIGO QUE DAVID PROPOCIONO)
 # Formatear datos a wide format, para que haya una columna por cada trimestre y una fila por cada jugador, para que pueda operar el paquete kml3d
-BD.kml <- goldEarned_per_quarter %>%
+BD.kml <- goldEarned_per_quarter_non_utility %>%
   select(summonerName, quarter, goldEarned_total) %>%
   pivot_wider(names_from = quarter, values_from = goldEarned_total, names_prefix = "quarter_")
 
@@ -787,37 +792,82 @@ ggplot(BD.kml_long_5, aes(x = quarter, y = goldEarned_total, color = as.factor(c
   theme_minimal()
 dev.off()
 
+# 
+# # 6.2.2. CLUSTERING CON VALORES RELATIVOS DE CAMBIO POR TRIMESTRE (porcentajes)
+# 
+# # Calcular el cambio porcentual de oro acumulado por trimestre para cada jugador
+# goldEarned_per_quarter <- goldEarned_per_quarter %>%
+#   group_by(summonerName) %>%
+#   arrange(quarter) %>%
+#   mutate(percent_change_gold = (goldEarned_total - lag(goldEarned_total)) / lag(goldEarned_total) * 100) %>%
+#   replace_na(list(percent_change_gold = 0)) %>%
+#   ungroup()
+# 
+# # Verificar los primeros y últimos valores de los cambios porcentuales
+# head(goldEarned_per_quarter %>% select(summonerName, quarter, goldEarned_total, percent_change_gold))
+# tail(goldEarned_per_quarter %>% select(summonerName, quarter, goldEarned_total, percent_change_gold))
+# 
+# 
+# # Reemplazar valores NA generados en el primer trimestre (porque no tienen un trimestre anterior) con 0
+# goldEarned_per_quarter$percent_change_gold[is.na(goldEarned_per_quarter$percent_change_gold)] <- 0
+# 
+# # Visualizar el cambio porcentual de oro acumulado para un subconjunto de jugadores
+# subconjunto_jugadores <- sample(unique(goldEarned_per_quarter$summonerName), 10)
+# goldEarned_percent_change_subconjunto <- goldEarned_per_quarter %>%
+#   filter(summonerName %in% subconjunto_jugadores)
+# 
+# ggplot(goldEarned_percent_change_subconjunto, aes(x = quarter, y = percent_change_gold, color = summonerName, group = summonerName)) +
+#   geom_line() +
+#   labs(title = "Cambio porcentual de oro acumulado por trimestre para jugadores seleccionados",
+#        x = "Quarter",
+#        y = "Cambio porcentual de oro (%)") +
+#   theme_minimal()
+# 
 
 
 
-#### EJEMPLO DE CLUSTERING (DAVID) #### 
 
-# Wide format para que pueda operar el paquete kml3d
-BD.kml <- goldEarned_per_quarter %>%  
-  select(summonerName, quarter, goldEarned_cumulative) %>%
-  gather(variable, value, -(summonerName:quarter)) %>%
-  unite(temp,variable,quarter) %>% 
-  spread(temp, value)
 
-# Crear objeto para los clusterings longitudinales y base de datos resultante
-cldGE <- cld3d(data.frame(BD.kml),timeInData= list(goldearned=2:5))
-kml3d(cldGE,nbRedrawing=50) # Guarda las trayectorias en cldGE
 
-# Estudiar performance de las distintas soluciones según nº de particiones
-load('cldGE.Rdata')
 
-listPart <- listPartition()
-listPart['criterionActif'] <-CRITERION_NAMES[1]
-for(i in 2:5){
-  listPart["add"] <- partition(getClusters(cldGE, i),cldGE)
-  ordered(listPart)
-}
 
-plotAllCriterion(listPart) # Parece que en 3 de 5 criterios 2 particiones es mejor...
 
-# Cómo guardar pertenencia al cluster según solución escogida como óptima
-BD.kml$clusters <- getClusters(cldGE, 5)
 
+
+
+
+
+
+
+# 
+# #### EJEMPLO DE CLUSTERING (DAVID) #### 
+# 
+# # Wide format para que pueda operar el paquete kml3d
+# BD.kml <- goldEarned_per_quarter %>%  
+#   select(summonerName, quarter, goldEarned_cumulative) %>%
+#   gather(variable, value, -(summonerName:quarter)) %>%
+#   unite(temp,variable,quarter) %>% 
+#   spread(temp, value)
+# 
+# # Crear objeto para los clusterings longitudinales y base de datos resultante
+# cldGE <- cld3d(data.frame(BD.kml),timeInData= list(goldearned=2:5))
+# kml3d(cldGE,nbRedrawing=50) # Guarda las trayectorias en cldGE
+# 
+# # Estudiar performance de las distintas soluciones según nº de particiones
+# load('cldGE.Rdata')
+# 
+# listPart <- listPartition()
+# listPart['criterionActif'] <-CRITERION_NAMES[1]
+# for(i in 2:5){
+#   listPart["add"] <- partition(getClusters(cldGE, i),cldGE)
+#   ordered(listPart)
+# }
+# 
+# plotAllCriterion(listPart) # Parece que en 3 de 5 criterios 2 particiones es mejor...
+# 
+# # Cómo guardar pertenencia al cluster según solución escogida como óptima
+# BD.kml$clusters <- getClusters(cldGE, 5)
+# 
 
 
 
