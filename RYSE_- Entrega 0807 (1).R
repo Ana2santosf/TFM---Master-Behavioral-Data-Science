@@ -640,11 +640,9 @@ cat("Modelo PCR y gráficos guardados correctamente.")
 loadings(pcr_model_con_interacciones)
 
 
-################### FALTA REVISAR DE AQUI PARA ABAJO + GUARDAR OUTPUTS EN CARPETAS CORRESPONDIENTES. HECHO
-
 
 # 6.2. CLUSTERING LONGITUDINAL
-# 6.2.1. CLUSTERING CON VALORES ABSOLUTOS DE ORO ACUMULADO POR TIRMESTRE
+# 6.2.0 TRABAJO PREVIO - ADAPTANDO NUESTRA BBDD
 
 # Verificar si hay datos faltantes en nuestra BBDD: vemos que no hay (ergo no hace falta imputar)
 colSums(is.na(datos_filtrados_mas_de_50))
@@ -656,82 +654,73 @@ datos_filtrados_mas_de_50 <- datos_filtrados_mas_de_50 %>%
   mutate(quarter = ceiling(row_number() / (n() / 4))) %>%
   ungroup()
 
-# Calcular oro acumulado por trimestre para cada jugador
-goldEarned_per_quarter <- datos_filtrados_mas_de_50 %>%
+# Calcular oro por minuto acumulado por trimestre para cada jugador
+goldEarnedPerMinute_per_quarter <- datos_filtrados_mas_de_50 %>%
   group_by(summonerName, quarter) %>%
-  summarise(goldEarned_total = sum(goldEarned, na.rm = TRUE))
+  summarise(goldEarnedPerMinute_total = sum(goldEarnedPerMinute, na.rm = TRUE))
 
-# Unir la columna 'goldEarned_per_quarter' a los datos filtrados
+# Unir la columna 'goldEarnedPerMinute_per_quarter' a los datos filtrados
 datos_filtrados_mas_de_50 <- datos_filtrados_mas_de_50 %>%
-  left_join(goldEarned_per_quarter, by = c("summonerName", "quarter"))
+  left_join(goldEarnedPerMinute_per_quarter, by = c("summonerName", "quarter"))
 
-
-
-# Calcular estadisticas descriptivas para goldEarned por trimestre
-goldEarned_summary_per_quarter <- goldEarned_per_quarter %>%
+# Calcular estadisticas descriptivas para goldEarnedPerMinute por trimestre
+goldEarnedPerMinute_summary_per_quarter <- goldEarnedPerMinute_per_quarter %>%
   group_by(quarter) %>%
-  summarise(mean_gold = mean(goldEarned_total, na.rm = TRUE),
-            median_gold = median(goldEarned_total, na.rm = TRUE),
-            sd_gold = sd(goldEarned_total, na.rm = TRUE))
+  summarise(mean_gold = mean(goldEarnedPerMinute_total, na.rm = TRUE),
+            median_gold = median(goldEarnedPerMinute_total, na.rm = TRUE),
+            sd_gold = sd(goldEarnedPerMinute_total, na.rm = TRUE))
 
-print(goldEarned_summary_per_quarter)
+print(goldEarnedPerMinute_summary_per_quarter)
 
-# Guardar estadisticas descriptivas para goldEarned por trimestre en un archivo
-write.xlsx(goldEarned_summary_per_quarter, file = file.path(ruta_descriptivos, "Oro_acumulado_por_trimestre_por_jugador.xlsx"), overwrite = TRUE)
+# Guardar estadisticas descriptivas para goldEarnedPerMinute por trimestre en un archivo
+write.xlsx(goldEarnedPerMinute_summary_per_quarter, file = file.path(ruta_descriptivos, "Oro_por_minuto_acumulado_por_trimestre_por_jugador.xlsx"), overwrite = TRUE)
 
-
-# Separar nuestros datos entre jugadores UTILITY y los que no (razon: los UTILITY casi no ganan oro, y por tanto deben ser medidos de manera separada, al ser un rol que se ocupa de tareas de control, no de ataque)
-goldEarned_per_quarter_utility <- goldEarned_per_quarter %>%
+# Separar nuestros datos entre jugadores UTILITY y los que no (razón: los UTILITY casi no ganan oro, y por tanto deben ser medidos de manera separada)
+goldEarnedPerMinute_per_quarter_utility <- goldEarnedPerMinute_per_quarter %>%
   filter(summonerName %in% datos_filtrados_mas_de_50$summonerName[datos_filtrados_mas_de_50$teamPosition == "UTILITY"])
 
-goldEarned_per_quarter_non_utility <- goldEarned_per_quarter %>%
-  filter(!summonerName %in% goldEarned_per_quarter_utility$summonerName)
+goldEarnedPerMinute_per_quarter_non_utility <- goldEarnedPerMinute_per_quarter %>%
+  filter(!summonerName %in% goldEarnedPerMinute_per_quarter_utility$summonerName)
 
-# Extraer 15 jugadores de UTILITY y las demas posiciones, para fines de visualizacion
-utility_players_sample <- sample(unique(goldEarned_per_quarter_utility$summonerName), 15)
-non_utility_players_sample <- sample(unique(goldEarned_per_quarter_non_utility$summonerName), 15)
+# Extraer 15 jugadores de UTILITY y las demás posiciones, para fines de visualización
+utility_players_sample <- sample(unique(goldEarnedPerMinute_per_quarter_utility$summonerName), 15)
+non_utility_players_sample <- sample(unique(goldEarnedPerMinute_per_quarter_non_utility$summonerName), 15)
 
 # Filtrar dataset para solo incluir 15 jugadores (UTILITY y otras posiciones)
-goldEarned_utility_sample <- goldEarned_per_quarter_utility %>%
+goldEarnedPerMinute_utility_sample <- goldEarnedPerMinute_per_quarter_utility %>%
   filter(summonerName %in% utility_players_sample)
 
-goldEarned_non_utility_sample <- goldEarned_per_quarter_non_utility %>%
+goldEarnedPerMinute_non_utility_sample <- goldEarnedPerMinute_per_quarter_non_utility %>%
   filter(summonerName %in% non_utility_players_sample)
 
-
 # Visualizar el rendimiento de las posiciones UTILITY (muestra)
-png(file = file.path(ruta_graficos, "goldEarned_UTILITY_muestra.png"))
-ggplot(goldEarned_utility_sample, aes(x = quarter, y = goldEarned_total, color = summonerName, group = summonerName)) +
+png(file = file.path(ruta_graficos, "goldEarnedPerMinute_UTILITY_muestra.png"))
+ggplot(goldEarnedPerMinute_utility_sample, aes(x = quarter, y = goldEarnedPerMinute_total, color = summonerName, group = summonerName)) +
   geom_line() +
-  labs(title = "goldEarned por trimestre para UTILITY (muestra)",
+  labs(title = "goldEarnedPerMinute por trimestre para UTILITY (muestra)",
        x = "Quarter",
-       y = "Total Gold Earned (Utility)") +
+       y = "Total Gold Earned per Minute (Utility)") +
   theme_minimal()
 dev.off()
 
-# Visualizar  el rendimiento de las posiciones NO UTILITY (muestra)
-png(file = file.path(ruta_graficos, "goldEarned_NO_UTILITY_muestra.png"))
-ggplot(goldEarned_non_utility_sample, aes(x = quarter, y = goldEarned_total, color = summonerName, group = summonerName)) +
+# Visualizar el rendimiento de las posiciones NO UTILITY (muestra)
+png(file = file.path(ruta_graficos, "goldEarnedPerMinute_NO_UTILITY_muestra.png"))
+ggplot(goldEarnedPerMinute_non_utility_sample, aes(x = quarter, y = goldEarnedPerMinute_total, color = summonerName, group = summonerName)) +
   geom_line() +
-  labs(title = "goldEarned por trimestre para NO UTILITY (muestra)",
+  labs(title = "goldEarnedPerMinute por trimestre para NO UTILITY (muestra)",
        x = "Quarter",
-       y = "Total Gold Earned (Non-Utility)") +
+       y = "Total Gold Earned per Minute (Non-Utility)") +
   theme_minimal()
 dev.off()
 
 
 
+# # 6.2.1.1 EJECUTANDO EL CLUSTERING SOBRE DATOS ENTEROS (SIN DIFERENCIAR ENTRE UTILITY Y NO)
 
-# SEPARAR AQUI ABAJO ENTRE UTILITY Y NO
-
-
-
-
-# EJECUTANDO EL CLUSTERING (EN BASE AL CODIGO QUE DAVID PROPOCIONO)
 # Formatear datos a wide format, para que haya una columna por cada trimestre y una fila por cada jugador, para que pueda operar el paquete kml3d
-BD.kml <- goldEarned_per_quarter_non_utility %>%
-  select(summonerName, quarter, goldEarned_total) %>%
-  pivot_wider(names_from = quarter, values_from = goldEarned_total, names_prefix = "quarter_")
+BD.kml <- goldEarnedPerMinute_per_quarter_non_utility %>%
+  select(summonerName, quarter, goldEarnedPerMinute_total) %>%
+  pivot_wider(names_from = quarter, values_from = goldEarnedPerMinute_total, names_prefix = "quarter_")
 
 # Crear objeto para los clusterings longitudinales y base de datos resultante
 cldGE <- cld3d(data.frame(BD.kml), timeInData = list(goldearned = 2:5)) 
@@ -748,31 +737,24 @@ for (i in 2:5) {
 # Visualizar los criterios para diferentes números de particiones: 
 plotAllCriterion(listPart) 
 
-# Parece que podemos seguir dos vias:
-# Primera via: Tres de los cinco criterios nos dicen que 2 particiones es mejor...
-# Segunda via: Dos de los cinco criterios nos dicen que 5 particiones es mejor...
+# Parece que podemos seguir dos vías:
+# Primera vía: Tres de los cinco criterios nos dicen que 2 particiones es mejor...
+# Segunda vía: Dos de los cinco criterios nos dicen que 5 particiones es mejor...
 
 # Asignar clusters con 2 y 5 particiones
 BD.kml$clusters_2 <- getClusters(cldGE, 2)
 BD.kml$clusters_5 <- getClusters(cldGE, 5)
 
-
 # Guardar los resultados de clustering en un archivo
-write.xlsx(BD.kml, file = file.path(ruta_modelizacion, "Clustering_oro_acumulado_por_jugador.xlsx"), overwrite = TRUE)
+write.xlsx(BD.kml, file = file.path(ruta_modelizacion, "Clustering_oro_por_minuto_por_jugador.xlsx"), overwrite = TRUE)
 
-
-# Parece que podemos seguir dos vias:
-# Primera via: Tres de los cinco criterios nos dicen que 2 particiones es mejor...
-# Segunda via: Dos de los cinco criterios nos dicen que 5 particiones es mejor...
-# Por tanto creamos dos variables (una con 2 clusters y otra con 5 clusters) y luego generamos gráficos para compararlas
-
-
+# Crear variables de clusters (una con 2 clusters y otra con 5 clusters) y generar gráficos para compararlas
 
 # Reshape a formato long para ambas agrupaciones de clusters
 BD.kml_long <- BD.kml %>%
   pivot_longer(cols = starts_with("quarter_"), 
                names_to = "quarter", 
-               values_to = "goldEarned_total") %>%
+               values_to = "goldEarnedPerMinute_total") %>%
   mutate(quarter = as.numeric(gsub("quarter_", "", quarter)))
 
 # Crear columnas de clusters para ambos casos en el dataframe long
@@ -782,27 +764,152 @@ BD.kml_long_2 <- BD.kml_long %>%
 BD.kml_long_5 <- BD.kml_long %>%
   mutate(clusters = clusters_5)  # Clusters con 5 particiones
 
-
 # Visualizar el rendimiento de los jugadores en cada cluster
 # Gráfico de 2 clusters (y lo guardamos)
-png(file = file.path(ruta_graficos, "trayectorias_oro_acumulado_2_clusters.png"))
-ggplot(BD.kml_long_2, aes(x = quarter, y = goldEarned_total, color = as.factor(clusters), group = summonerName)) +
+png(file = file.path(ruta_graficos, "trayectorias_oro_por_minuto_2_clusters.png"))
+ggplot(BD.kml_long_2, aes(x = quarter, y = goldEarnedPerMinute_total, color = as.factor(clusters), group = summonerName)) +
   geom_line() +
-  labs(title = "Trayectorias de oro acumulado (2 clusters)", x = "Quarter", y = "Oro acumulado", color = "Cluster") +
+  labs(title = "Trayectorias de oro por minuto acumulado (2 clusters)", x = "Quarter", y = "Oro acumulado por minuto", color = "Cluster") +
   theme_minimal()
 dev.off()
 
-# Gráfico de 5 clusters
-png(file = file.path(ruta_graficos, "trayectorias_oro_acumulado_5_clusters.png"))
-ggplot(BD.kml_long_5, aes(x = quarter, y = goldEarned_total, color = as.factor(clusters), group = summonerName)) +
+# Gráfico de 5 clusters (y lo guardamos)
+png(file = file.path(ruta_graficos, "trayectorias_oro_por_minuto_5_clusters.png"))
+ggplot(BD.kml_long_5, aes(x = quarter, y = goldEarnedPerMinute_total, color = as.factor(clusters), group = summonerName)) +
   geom_line() +
-  labs(title = "Trayectorias de oro acumulado (5 clusters)", x = "Quarter", y = "Oro acumulado", color = "Cluster") +
+  labs(title = "Trayectorias de oro por minuto acumulado (5 clusters)", x = "Quarter", y = "Oro acumulado por minuto", color = "Cluster") +
   theme_minimal()
 dev.off()
 
-# 
+# 6.2.1.2 EJECUTANDO EL CLUSTERING SOBRE DATOS DIFERENCIADOS ENTRE UTILITY Y NO UTILITY, PARA VER SI HAY DIFERENCIAS
+
+# CLUSTERING PARA JUGADORES NO UTILITY
+
+## Formatear datos a wide format para jugadores no UTILITY
+BD.kml_non_utility <- goldEarnedPerMinute_per_quarter_non_utility %>%
+  select(summonerName, quarter, goldEarnedPerMinute_total) %>%
+  pivot_wider(names_from = quarter, values_from = goldEarnedPerMinute_total, names_prefix = "quarter_")
+
+# Crear objeto de clustering y realizar clustering para no UTILITY
+cldGE_non_utility <- cld3d(data.frame(BD.kml_non_utility), timeInData = list(goldearned = 2:5))
+kml3d(cldGE_non_utility, nbRedrawing = 50)
+
+# Estudiar performance de las distintas soluciones según nº de particiones
+listPart_non_utility <- listPartition()
+listPart_non_utility['criterionActif'] <- CRITERION_NAMES[1]
+for (i in 2:5) {
+  listPart_non_utility["add"] <- partition(getClusters(cldGE_non_utility, i), cldGE_non_utility)
+  ordered(listPart_non_utility)
+}
+
+# Visualizar los criterios para diferentes números de particiones: 
+plotAllCriterion(listPart_non_utility)
+
+# Asignar clusters con 2 y 5 particiones para no UTILITY
+BD.kml_non_utility$clusters_2 <- getClusters(cldGE_non_utility, 2)
+BD.kml_non_utility$clusters_5 <- getClusters(cldGE_non_utility, 5)
+
+# Guardar los resultados de clustering en un archivo para no UTILITY
+write.xlsx(BD.kml_non_utility, file = file.path(ruta_modelizacion, "Clustering_oro_por_minuto_NO_UTILITY.xlsx"), overwrite = TRUE)
+
+
+# Reshape a formato long para ambas agrupaciones de clusters (no UTILITY)
+BD.kml_long_non_utility <- BD.kml_non_utility %>%
+  pivot_longer(cols = starts_with("quarter_"), 
+               names_to = "quarter", 
+               values_to = "goldEarnedPerMinute_total") %>%
+  mutate(quarter = as.numeric(gsub("quarter_", "", quarter)))
+
+# Crear columnas de clusters para ambos casos en el dataframe long (no UTILITY)
+BD.kml_long_non_utility_2 <- BD.kml_long_non_utility %>%
+  mutate(clusters = clusters_2)  # Clusters con 2 particiones
+
+BD.kml_long_non_utility_5 <- BD.kml_long_non_utility %>%
+  mutate(clusters = clusters_5)  # Clusters con 5 particiones
+
+
+# CLUSTERING PARA JUGADORES UTILITY
+
+# Formatear datos a wide format para jugadores UTILITY
+BD.kml_utility <- goldEarnedPerMinute_per_quarter_utility %>%
+  select(summonerName, quarter, goldEarnedPerMinute_total) %>%
+  pivot_wider(names_from = quarter, values_from = goldEarnedPerMinute_total, names_prefix = "quarter_")
+
+# Crear objeto de clustering y realizar clustering para UTILITY
+cldGE_utility <- cld3d(data.frame(BD.kml_utility), timeInData = list(goldearned = 2:5))
+kml3d(cldGE_utility, nbRedrawing = 50)
+
+# Estudiar performance de las distintas soluciones según nº de particiones
+listPart_utility <- listPartition()
+listPart_utility['criterionActif'] <- CRITERION_NAMES[1]
+for (i in 2:5) {
+  listPart_utility["add"] <- partition(getClusters(cldGE_utility, i), cldGE_utility)
+  ordered(listPart_utility)
+}
+
+# Visualizar los criterios para diferentes números de particiones: 
+plotAllCriterion(listPart_utility)
+
+# Asignar clusters con 2 y 5 particiones para UTILITY
+BD.kml_utility$clusters_2 <- getClusters(cldGE_utility, 2)
+BD.kml_utility$clusters_5 <- getClusters(cldGE_utility, 5)
+
+# Guardar los resultados de clustering en un archivo para UTILITY
+write.xlsx(BD.kml_utility, file = file.path(ruta_modelizacion, "Clustering_oro_por_minuto_UTILITY.xlsx"), overwrite = TRUE)
+
+# Reshape a formato long para ambas agrupaciones de clusters (UTILITY)
+BD.kml_long_utility <- BD.kml_utility %>%
+  pivot_longer(cols = starts_with("quarter_"), 
+               names_to = "quarter", 
+               values_to = "goldEarnedPerMinute_total") %>%
+  mutate(quarter = as.numeric(gsub("quarter_", "", quarter)))
+
+# Crear columnas de clusters para ambos casos en el dataframe long (UTILITY)
+BD.kml_long_utility_2 <- BD.kml_long_utility %>%
+  mutate(clusters = clusters_2)  # Clusters con 2 particiones
+
+BD.kml_long_utility_5 <- BD.kml_long_utility %>%
+  mutate(clusters = clusters_5)  # Clusters con 5 particiones
+
+
+# VISUALIZACIÓN
+
+# Gráfico de 2 clusters para NO UTILITY (y lo guardamos)
+png(file = file.path(ruta_graficos, "trayectorias_oro_por_minuto_2_clusters_NO_UTILITY.png"))
+ggplot(BD.kml_long_non_utility_2, aes(x = quarter, y = goldEarnedPerMinute_total, color = as.factor(clusters), group = summonerName)) +
+  geom_line() +
+  labs(title = "Trayectorias de oro por minuto acumulado (2 clusters) NO UTILITY", x = "Quarter", y = "Oro acumulado por minuto", color = "Cluster") +
+  theme_minimal()
+dev.off()
+
+# Gráfico de 5 clusters para NO UTILITY
+png(file = file.path(ruta_graficos, "trayectorias_oro_por_minuto_5_clusters_NO_UTILITY.png"))
+ggplot(BD.kml_long_non_utility_5, aes(x = quarter, y = goldEarnedPerMinute_total, color = as.factor(clusters), group = summonerName)) +
+  geom_line() +
+  labs(title = "Trayectorias de oro por minuto acumulado (5 clusters) NO UTILITY", x = "Quarter", y = "Oro acumulado por minuto", color = "Cluster") +
+  theme_minimal()
+dev.off()
+
+# Gráfico de 2 clusters para UTILITY
+png(file = file.path(ruta_graficos, "trayectorias_oro_por_minuto_2_clusters_UTILITY.png"))
+ggplot(BD.kml_long_utility_2, aes(x = quarter, y = goldEarnedPerMinute_total, color = as.factor(clusters), group = summonerName)) +
+  geom_line() +
+  labs(title = "Trayectorias de oro por minuto acumulado (2 clusters) UTILITY", x = "Quarter", y = "Oro acumulado por minuto", color = "Cluster") +
+  theme_minimal()
+dev.off()
+
+# Gráfico de 5 clusters para UTILITY
+png(file = file.path(ruta_graficos, "trayectorias_oro_por_minuto_5_clusters_UTILITY.png"))
+ggplot(BD.kml_long_utility_5, aes(x = quarter, y = goldEarnedPerMinute_total, color = as.factor(clusters), group = summonerName)) +
+  geom_line() +
+  labs(title = "Trayectorias de oro por minuto acumulado (5 clusters) UTILITY", x = "Quarter", y = "Oro acumulado por minuto", color = "Cluster") +
+  theme_minimal()
+dev.off()
+
+
+
 # # 6.2.2. CLUSTERING CON VALORES RELATIVOS DE CAMBIO POR TRIMESTRE (porcentajes)
-# 
+
 # # Calcular el cambio porcentual de oro acumulado por trimestre para cada jugador
 # goldEarned_per_quarter <- goldEarned_per_quarter %>%
 #   group_by(summonerName) %>%
@@ -834,35 +941,11 @@ dev.off()
 
 
 
-#### EJEMPLO DE CLUSTERING (DAVID) #### NO MUESTRA MISMA CLASIFICACIÓN, NI MUESTRA LA 
-#MISMA PERFORMANCE EN LOS CRITERIOS. LO BORRAMOS IGUALMENTE?
-
-# Wide format para que pueda operar el paquete kml3d
-BD.kml2 <- goldEarned_per_quarter %>%  
-  select(summonerName, quarter, goldEarned_total) %>%
-  gather(variable, value, -(summonerName:quarter)) %>%
-  unite(temp,variable,quarter) %>% 
-  spread(temp, value)
-
-# Crear objeto para los clusterings longitudinales y base de datos resultante
-cldGE2 <- cld3d(data.frame(BD.kml2),timeInData= list(goldearned=2:5))
-kml3d(cldGE2,nbRedrawing=50) # Guarda las trayectorias en cldGE
-
-# Estudiar performance de las distintas soluciones según nº de particiones
-load('cldGE2.Rdata')
-
-listPart <- listPartition()
-listPart['criterionActif'] <-CRITERION_NAMES[1]
-for(i in 2:5){
-  listPart["add"] <- partition(getClusters(cldGE2, i),cldGE2)
-  ordered(listPart)
-}
-
-# Cómo guardar pertenencia al cluster según solución escogida como óptima
-BD.kml2$clusters <- getClusters(cldGE2, 5)
 
 
-# 
+
+
+ 
 # #### EJEMPLO DE CLUSTERING (DAVID) #### 
 # 
 # # Wide format para que pueda operar el paquete kml3d
@@ -890,48 +973,11 @@ BD.kml2$clusters <- getClusters(cldGE2, 5)
 # 
 # # Cómo guardar pertenencia al cluster según solución escogida como óptima
 # BD.kml$clusters <- getClusters(cldGE, 5)
-# 
+ 
 
 
 
-
-
-# 6.5. 
-# ANÁLISIS POR LIGAS - NOTA: Aunque no lo mencionamos en la entrega 3, lo agregamos para la entrega FINAL
-
-#################### ESTO SIGUE SIENDO RELEVANTE? CREO QUE ES UNA REPETICION
-# Análisis individualizado por liga - HABRA QUE USAR EL 'goldEarnedPerMinute' AQUI (se creo la varibale justamente para normalizar valores de oro ganado entre ligas)
-analisis_por_liga <- datos_agrupados_finales %>%
-  group_by(League) %>%
-  summarise(across(ends_with(".mean"), list(mean = ~ mean(.x, na.rm = TRUE),
-                                            sd = ~ sd(.x, na.rm = TRUE),
-                                            min = ~ min(.x, na.rm = TRUE),
-                                            `25%` = ~ quantile(.x, 0.25, na.rm = TRUE),
-                                            `50%` = ~ median(.x, na.rm = TRUE),
-                                            `75%` = ~ quantile(.x, 0.75, na.rm = TRUE),
-                                            max = ~ max(.x, na.rm = TRUE)))) %>%
-  pivot_longer(cols = -League, names_to = c("variable", "stat"), names_sep = "_")
-
-# Convertir las listas en columnas atómicas (ajustando según las columnas presentes)
-analisis_por_liga <- analisis_por_liga %>%
-  pivot_wider(names_from = stat, values_from = value) %>%
-  unnest(cols = c(mean, sd, min, `25%`, `50%`, `75%`, max))
-
-# Mostrar el resultado
-print(analisis_por_liga)
-
-# Guardar en un archivo CSV
-write.csv(analisis_por_liga, "analisis_por_liga.csv", row.names = FALSE)
-##################
-
-
-
-############ ESTO ESTA PENDIENTE DE INTEGRAR (ESTABA EN EL INICIO DEL CODIGO)
-# Análisis individualizado por liga (datos sin extremos)
-##LO QUITAMOS PORQUE ESTÁ REPETIDO JUSTO ARRIBA
-######################
-
-
+# 6.3. ANÁLISIS POR LIGAS
 
 
 
@@ -983,8 +1029,38 @@ saveWorkbook(wb_liga, file = file.path(ruta_descriptivos, "Resultados_Analisis_L
 cat("Resultados del análisis por liga exportados correctamente a Excel en la carpeta Descriptivos.\n")
 
 
-# 6.5.
-# REGRESIONES
+# # Análisis individualizado por liga
+# analisis_por_liga <- datos_agrupados_finales %>%
+#   group_by(League) %>%
+#   summarise(across(ends_with(".mean"), list(mean = ~ mean(.x, na.rm = TRUE),
+#                                             sd = ~ sd(.x, na.rm = TRUE),
+#                                             min = ~ min(.x, na.rm = TRUE),
+#                                             `25%` = ~ quantile(.x, 0.25, na.rm = TRUE),
+#                                             `50%` = ~ median(.x, na.rm = TRUE),
+#                                             `75%` = ~ quantile(.x, 0.75, na.rm = TRUE),
+#                                             max = ~ max(.x, na.rm = TRUE)))) %>%
+#   pivot_longer(cols = -League, names_to = c("variable", "stat"), names_sep = "_")
+# 
+# # Convertir las listas en columnas atómicas (ajustando según las columnas presentes)
+# analisis_por_liga <- analisis_por_liga %>%
+#   pivot_wider(names_from = stat, values_from = value) %>%
+#   unnest(cols = c(mean, sd, min, `25%`, `50%`, `75%`, max))
+# 
+# # Mostrar el resultado
+# print(analisis_por_liga)
+# 
+# # Guardar en un archivo CSV
+# write.csv(analisis_por_liga, "analisis_por_liga.csv", row.names = FALSE)
+# ##################
+
+
+
+
+
+
+
+
+# 6.4.REGRESIONES
 
 # Crear un libro de trabajo para los resultados de regresiones
 wb_regresion <- createWorkbook()
@@ -1050,48 +1126,4 @@ cat("Resultados de las regresiones exportados correctamente a Excel en la carpet
 
 
 
-
-
-# # 6.X.
-# # ANÁLISIS POR POSICIÓN ###### ESTO NO SON ANALISIS DESCRIPTIVOS INCIALES? QUE APORTAN AQUI?
-# 
-# library(gridExtra)
-# library(openxlsx)
-# 
-# # Crear un libro de trabajo para los resultados de posiciones
-# wb_pos <- createWorkbook()
-# 
-# # Analizar rendimiento por posición
-# for (position in unique(datos$teamPosition)) {
-#   cat("\nAnálisis para la posición:", position, "\n")
-#   
-#   datos_posicion <- datos %>% filter(teamPosition == position)
-#   
-#   if (nrow(datos_posicion) > 0) {
-#     summary_stats <- summary(datos_posicion %>% select(all_of(variables_numericas_preseleccion)))
-#     addWorksheet(wb_pos, paste0("Resumen_", position))
-#     writeData(wb_pos, paste0("Resumen_", position), summary_stats)
-#     
-#     # Visualización: Boxplot por posición
-#     plots <- list()
-#     for (var in variables_numericas_preseleccion) {
-#       p <- ggplot(datos_posicion, aes(x = teamPosition, y = .data[[var]])) +
-#         geom_boxplot() +
-#         labs(title = paste("Boxplot de", var, "por posición"), x = "Posición", y = var) +
-#         theme_minimal()
-#       plots[[var]] <- p
-#     }
-#     
-#     # Guardar todos los gráficos en un solo archivo de imagen
-#     g <- marrangeGrob(plots, nrow = 2, ncol = 2)
-#     ggsave(filename = paste0("Boxplots_Posicion_", gsub("/", "_", position), ".png"), g, width = 16, height = 12)
-#     cat("Boxplots para la posición", position, "exportados correctamente.\n")
-#   } else {
-#     cat("No hay suficientes datos para la posición:", position, "\n")
-#   }
-# }
-# 
-# # Guardar el archivo Excel
-# saveWorkbook(wb_pos, file = "Resultados_Analisis_Posiciones.xlsx", overwrite = TRUE)
-# cat("Resultados del análisis por posición exportados correctamente a Excel.\n")
 
