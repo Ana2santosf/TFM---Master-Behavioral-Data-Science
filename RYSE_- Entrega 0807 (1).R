@@ -131,7 +131,7 @@ print(gold_per_min_stats)
 write.xlsx(gold_per_min_stats, file = file.path(ruta_descriptivos, "Estadisticas_Oro_Por_Minuto.xlsx"), overwrite = TRUE)
 
 
-# Agrupar los datos por jugador y calcular estadísticas agregadas
+# Agrupar los datos por jugador y calcular estadísticas agregadas (datos originales)
 datos_originales_agrupados <- datos_originales %>%
   group_by(summonerName) %>%
   summarise(across(all_of(variables_numericas_preseleccion),
@@ -256,13 +256,12 @@ desc_stats_agrupadas_sin_extremos <- datos_sin_extremos %>%
 write.xlsx(desc_stats_agrupadas_sin_extremos, file = file.path(ruta_descriptivos, "Estadisticas_Agrupadas_Sin_Extremos.xlsx"), overwrite = TRUE)
 
 
-
-# Filtrar los nombres de jugadores con más de 50 partidas
+# Obtener los nombres de jugadores con más de 50 partidas
 jugadores_mas_de_50 <- partidas_por_jugador %>%
   filter(num_partidas > 50) %>%
   pull(summonerName)
 
-# Filtrar los datos de jugadores con más de 50 partidas
+# Filtrar los datos quedandonos solo con los jugadores con más de 50 partidas
 datos_filtrados_mas_de_50 <- datos_sin_extremos %>%
   filter(summonerName %in% jugadores_mas_de_50)
 
@@ -273,14 +272,7 @@ write.xlsx(datos_filtrados_mas_de_50, file = file.path(ruta_datos, "Datos_Filtra
 
 
 
-# Filtrar los nombres de jugadores con menos de (o igual a) 50 partidas
-jugadores_menos_igual_50 <- partidas_por_jugador %>%
-  filter(num_partidas <= 50) %>%
-  pull(summonerName)
 
-# Filtrar los datos de jugadores con más de 50 partidas
-datos_filtrados_menos_igual_50 <- datos_sin_extremos %>%
-  filter(summonerName %in% jugadores_menos_igual_50)
 
 
 # CALCULAR ESTADÍSTICAS DESCRIPTIVAS AGRUPADAS
@@ -979,12 +971,10 @@ dev.off()
 
 # 6.3. ANÁLISIS POR LIGAS
 
-
-
 # Crear un libro de trabajo para los resultados de ligas
 wb_liga <- createWorkbook()
 
-# Analizar rendimiento por liga
+# Analizar rendimiento por liga y generar estadísticas descriptivas para cada liga
 for (liga in unique(datos_filtrados_mas_de_50$League)) {
   cat("\nAnálisis para la liga:", liga, "\n")
   
@@ -992,71 +982,40 @@ for (liga in unique(datos_filtrados_mas_de_50$League)) {
   
   if (nrow(datos_liga) > 0) {
     summary_stats <- datos_liga %>% summarise(across(all_of(variables_numericas_preseleccion), list(mean = ~ mean(.x, na.rm = TRUE),
-                                                                                       sd = ~ sd(.x, na.rm = TRUE),
-                                                                                       min = ~ min(.x, na.rm = TRUE),
-                                                                                       `25%` = ~ quantile(.x, 0.25, na.rm = TRUE),
-                                                                                       `50%` = ~ median(.x, na.rm = TRUE),
-                                                                                       `75%` = ~ quantile(.x, 0.75, na.rm = TRUE),
-                                                                                       max = ~ max(.x, na.rm = TRUE))))
+                                                                                                    sd = ~ sd(.x, na.rm = TRUE),
+                                                                                                    min = ~ min(.x, na.rm = TRUE),
+                                                                                                    `25%` = ~ quantile(.x, 0.25, na.rm = TRUE),
+                                                                                                    `50%` = ~ median(.x, na.rm = TRUE),
+                                                                                                    `75%` = ~ quantile(.x, 0.75, na.rm = TRUE),
+                                                                                                    max = ~ max(.x, na.rm = TRUE))))
+    # Guardar estadísticas en el archivo Excel
     addWorksheet(wb_liga, paste0("Resumen_", liga))
     writeData(wb_liga, paste0("Resumen_", liga), summary_stats)
     
-    # Visualización: Boxplot por liga
-    plots <- list()
-    for (var in variables_numericas_preseleccion) {
-      p <- ggplot(datos_liga, aes(x = League, y = .data[[var]])) +
-        geom_boxplot() +
-        labs(title = paste("Boxplot de", var, "por liga"), x = "Liga", y = var) +
-        theme_minimal()
-      plots[[var]] <- p
-    }
-    
-  
-    # Guardar todos los gráficos en un solo archivo de imagen
-    g <- marrangeGrob(plots, nrow = 5, ncol = 4)
-    ggsave(filename = file.path(ruta_graficos, paste0("Boxplots_Liga_", gsub("/", "_", liga), ".png")), 
-           g, width = 16, height = 12)
-    cat("Boxplots para la liga", liga, "exportados correctamente.\n")
+    cat("Estadísticas para la liga", liga, "exportadas correctamente.\n")
   } else {
     cat("No hay suficientes datos para la liga:", liga, "\n")
   }
 }
 
-# Guardar el archivo Excel
 # Guardar el archivo Excel en la carpeta Descriptivos
 saveWorkbook(wb_liga, file = file.path(ruta_descriptivos, "Resultados_Analisis_Ligas.xlsx"), overwrite = TRUE)
-
 cat("Resultados del análisis por liga exportados correctamente a Excel en la carpeta Descriptivos.\n")
 
-
-# # Análisis individualizado por liga
-# analisis_por_liga <- datos_agrupados_finales %>%
-#   group_by(League) %>%
-#   summarise(across(ends_with(".mean"), list(mean = ~ mean(.x, na.rm = TRUE),
-#                                             sd = ~ sd(.x, na.rm = TRUE),
-#                                             min = ~ min(.x, na.rm = TRUE),
-#                                             `25%` = ~ quantile(.x, 0.25, na.rm = TRUE),
-#                                             `50%` = ~ median(.x, na.rm = TRUE),
-#                                             `75%` = ~ quantile(.x, 0.75, na.rm = TRUE),
-#                                             max = ~ max(.x, na.rm = TRUE)))) %>%
-#   pivot_longer(cols = -League, names_to = c("variable", "stat"), names_sep = "_")
-# 
-# # Convertir las listas en columnas atómicas (ajustando según las columnas presentes)
-# analisis_por_liga <- analisis_por_liga %>%
-#   pivot_wider(names_from = stat, values_from = value) %>%
-#   unnest(cols = c(mean, sd, min, `25%`, `50%`, `75%`, max))
-# 
-# # Mostrar el resultado
-# print(analisis_por_liga)
-# 
-# # Guardar en un archivo CSV
-# write.csv(analisis_por_liga, "analisis_por_liga.csv", row.names = FALSE)
-# ##################
-
-
-
-
-
+# Generar Boxplots comparando ligas simultáneamente para cada variable
+for (var in variables_numericas_preseleccion) {
+  p <- ggplot(datos_filtrados_mas_de_50, aes(x = League, y = .data[[var]], fill = League)) +
+    geom_boxplot() +
+    labs(title = paste("Boxplot de", var, "por liga"), x = "Liga", y = var) +
+    theme_minimal() +
+    theme(legend.position = "none")  # Opcional, para eliminar la leyenda
+  
+  # Guardar el gráfico en la carpeta de gráficos
+  ggsave(filename = file.path(ruta_graficos, paste0("Boxplot_comparacion_por_liga", var, ".png")), 
+         plot = p, width = 10, height = 6)
+  
+  cat("Boxplot comparativo para", var, "exportado correctamente.\n")
+}
 
 
 
@@ -1065,7 +1024,7 @@ cat("Resultados del análisis por liga exportados correctamente a Excel en la ca
 # Crear un libro de trabajo para los resultados de regresiones
 wb_regresion <- createWorkbook()
 
-# 6.5.1. REGRESIONES POR POSICIÓN
+# 6.4.1. REGRESIONES POR POSICIÓN
 
 # Crear modelo de regresión para cada posición
 for (position in unique(datos_filtrados_mas_de_50$teamPosition)) {
@@ -1093,7 +1052,7 @@ for (position in unique(datos_filtrados_mas_de_50$teamPosition)) {
 }
 
 
-# 6.5.2. REGRESIONES POR LIGAS
+# 6.4.2. REGRESIONES POR LIGAS
 # Crear modelo de regresión para cada liga
 for (liga in unique(datos_filtrados_mas_de_50$League)) {
   cat("\nModelo de regresión para la liga:", liga, "\n")
