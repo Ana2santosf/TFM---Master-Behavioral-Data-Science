@@ -20,7 +20,7 @@ install_and_load <- function(package) {
 }
 
 # Lista de liberias necesarias
-libraries <- c("tidyverse", "GGally", "caret", "plm", "ggplot2", "readxl", "openxlsx", "psych", "pls", "here", "kml3d")
+libraries <- c("tidyverse", "GGally", "caret", "plm", "ggplot2", "readxl", "openxlsx", "psych", "pls", "here", "kml3d", "gridExtra")
 
 # Ejecutar la función para cada libreria en la lista
 lapply(libraries, install_and_load)
@@ -47,7 +47,7 @@ dir.create(ruta_descriptivos, recursive = TRUE, showWarnings = FALSE)
 dir.create(ruta_modelizacion, recursive = TRUE, showWarnings = FALSE)
 dir.create(ruta_graficos, recursive = TRUE, showWarnings = FALSE)
 dir.create(ruta_graficos_medias, recursive = TRUE, showWarnings = FALSE)
-dir.create(ruta_graficos_medianas, recursive = TRUE, showWarnings = FALSE)
+dir.create(ruta_graficos_mediana , recursive = TRUE, showWarnings = FALSE)
 
 
 # Leer los datos desde la carpeta Datos
@@ -528,7 +528,7 @@ print(cor_matrix)
 datos_filtrados_mas_de_50_numericas <- datos_filtrados_mas_de_50 %>%
   select_if(is.numeric) %>%                     # Mantener solo variables numéricas
   select_if(~ var(.) > 0) %>%                   # Eliminar columnas con varianza cero
-  select(-Partida, -goldEarnedPerMinute, -quarter, -goldEarned_cumulative)  # Eliminar variables no útiles
+  select(-Partida, -goldEarnedPerMinute)  # Eliminar variables no útiles
 
 # Realizar PCA sobre todas las variables
 pca_todas_variables <- prcomp(datos_filtrados_mas_de_50_numericas, center = TRUE, scale. = TRUE)
@@ -558,7 +558,7 @@ variables_numericas_preseleccion <- c("goldEarned", "kills", "deaths", "assists"
                          "player.WR", "turretKills", "totalMinionsKilled", "totalTimeCCDealt", 
                          "baronKills", "dragonKills", "totalDamageDealt", 
                          "totalDamageTaken", "totalDamageDealtToChampions", 
-                         "damageDealtToObjectives", "goldEarnedPerMinute")
+                         "damageDealtToObjectives", "goldEarnedPerMinute", "visionScore")
 
 # Extraer los datos filtrados (solo variables numéricas)
 datos_pca_variables_preseleccionadas <- select(datos_filtrados_mas_de_50, all_of(variables_numericas_preseleccion))
@@ -640,7 +640,7 @@ cat("Modelo PCR y gráficos guardados correctamente.")
 loadings(pcr_model_con_interacciones)
 
 
-################### FALTA REVISAR DE AQUI PARA ABAJO + GUARDAR OUTPUTS EN CARPETAS CORRESPONDIENTES
+################### FALTA REVISAR DE AQUI PARA ABAJO + GUARDAR OUTPUTS EN CARPETAS CORRESPONDIENTES. HECHO
 
 
 # 6.2. CLUSTERING LONGITUDINAL
@@ -664,6 +664,8 @@ goldEarned_per_quarter <- datos_filtrados_mas_de_50 %>%
 # Unir la columna 'goldEarned_per_quarter' a los datos filtrados
 datos_filtrados_mas_de_50 <- datos_filtrados_mas_de_50 %>%
   left_join(goldEarned_per_quarter, by = c("summonerName", "quarter"))
+
+
 
 # Calcular estadisticas descriptivas para goldEarned por trimestre
 goldEarned_summary_per_quarter <- goldEarned_per_quarter %>%
@@ -746,6 +748,15 @@ for (i in 2:5) {
 # Visualizar los criterios para diferentes números de particiones: 
 plotAllCriterion(listPart) 
 
+# Parece que podemos seguir dos vias:
+# Primera via: Tres de los cinco criterios nos dicen que 2 particiones es mejor...
+# Segunda via: Dos de los cinco criterios nos dicen que 5 particiones es mejor...
+
+# Asignar clusters con 2 y 5 particiones
+BD.kml$clusters_2 <- getClusters(cldGE, 2)
+BD.kml$clusters_5 <- getClusters(cldGE, 5)
+
+
 # Guardar los resultados de clustering en un archivo
 write.xlsx(BD.kml, file = file.path(ruta_modelizacion, "Clustering_oro_acumulado_por_jugador.xlsx"), overwrite = TRUE)
 
@@ -756,9 +767,6 @@ write.xlsx(BD.kml, file = file.path(ruta_modelizacion, "Clustering_oro_acumulado
 # Por tanto creamos dos variables (una con 2 clusters y otra con 5 clusters) y luego generamos gráficos para compararlas
 
 
-# Asignar clusters con 2 y 5 particiones
-BD.kml$clusters_2 <- getClusters(cldGE, 2)
-BD.kml$clusters_5 <- getClusters(cldGE, 5)
 
 # Reshape a formato long para ambas agrupaciones de clusters
 BD.kml_long <- BD.kml %>%
@@ -826,17 +834,32 @@ dev.off()
 
 
 
+#### EJEMPLO DE CLUSTERING (DAVID) #### NO MUESTRA MISMA CLASIFICACIÓN, NI MUESTRA LA 
+#MISMA PERFORMANCE EN LOS CRITERIOS. LO BORRAMOS IGUALMENTE?
 
+# Wide format para que pueda operar el paquete kml3d
+BD.kml2 <- goldEarned_per_quarter %>%  
+  select(summonerName, quarter, goldEarned_total) %>%
+  gather(variable, value, -(summonerName:quarter)) %>%
+  unite(temp,variable,quarter) %>% 
+  spread(temp, value)
 
+# Crear objeto para los clusterings longitudinales y base de datos resultante
+cldGE2 <- cld3d(data.frame(BD.kml2),timeInData= list(goldearned=2:5))
+kml3d(cldGE2,nbRedrawing=50) # Guarda las trayectorias en cldGE
 
+# Estudiar performance de las distintas soluciones según nº de particiones
+load('cldGE2.Rdata')
 
+listPart <- listPartition()
+listPart['criterionActif'] <-CRITERION_NAMES[1]
+for(i in 2:5){
+  listPart["add"] <- partition(getClusters(cldGE2, i),cldGE2)
+  ordered(listPart)
+}
 
-
-
-
-
-
-
+# Cómo guardar pertenencia al cluster según solución escogida como óptima
+BD.kml2$clusters <- getClusters(cldGE2, 5)
 
 
 # 
@@ -905,28 +928,9 @@ write.csv(analisis_por_liga, "analisis_por_liga.csv", row.names = FALSE)
 
 ############ ESTO ESTA PENDIENTE DE INTEGRAR (ESTABA EN EL INICIO DEL CODIGO)
 # Análisis individualizado por liga (datos sin extremos)
-analisis_por_liga <- datos_agrupados_finales %>%
-  group_by(League) %>%
-  summarise(across(ends_with(".mean"), list(mean = ~ mean(.x, na.rm = TRUE),
-                                            sd = ~ sd(.x, na.rm = TRUE),
-                                            min = ~ min(.x, na.rm = TRUE),
-                                            `25%` = ~ quantile(.x, 0.25, na.rm = TRUE),
-                                            `50%` = ~ median(.x, na.rm = TRUE),
-                                            `75%` = ~ quantile(.x, 0.75, na.rm = TRUE),
-                                            max = ~ max(.x, na.rm = TRUE)))) %>%
-  pivot_longer(cols = -League, names_to = c("variable", "stat"), names_sep = "_")
-
-# Convertir las listas en columnas atómicas (ajustando según las columnas presentes)
-analisis_por_liga <- analisis_por_liga %>%
-  pivot_wider(names_from = stat, values_from = value) %>%
-  unnest(cols = c(mean, sd, min, `25%`, `50%`, `75%`, max))
-
-# Mostrar el resultado
-print(analisis_por_liga)
-
-# Guardar en un archivo CSV
-write.csv(analisis_por_liga, "analisis_por_liga.csv", row.names = FALSE)
+##LO QUITAMOS PORQUE ESTÁ REPETIDO JUSTO ARRIBA
 ######################
+
 
 
 
@@ -935,10 +939,10 @@ write.csv(analisis_por_liga, "analisis_por_liga.csv", row.names = FALSE)
 wb_liga <- createWorkbook()
 
 # Analizar rendimiento por liga
-for (liga in unique(datos_originales$League)) {
+for (liga in unique(datos_filtrados_mas_de_50$League)) {
   cat("\nAnálisis para la liga:", liga, "\n")
   
-  datos_liga <- datos_originales %>% filter(League == liga)
+  datos_liga <- datos_filtrados_mas_de_50 %>% filter(League == liga)
   
   if (nrow(datos_liga) > 0) {
     summary_stats <- datos_liga %>% summarise(across(all_of(variables_numericas_preseleccion), list(mean = ~ mean(.x, na.rm = TRUE),
@@ -961,9 +965,11 @@ for (liga in unique(datos_originales$League)) {
       plots[[var]] <- p
     }
     
+  
     # Guardar todos los gráficos en un solo archivo de imagen
-    g <- marrangeGrob(plots, nrow = 2, ncol = 2)
-    ggsave(filename = paste0("Boxplots_Liga_", gsub("/", "_", liga), ".png"), g, width = 16, height = 12)
+    g <- marrangeGrob(plots, nrow = 5, ncol = 4)
+    ggsave(filename = file.path(ruta_graficos, paste0("Boxplots_Liga_", gsub("/", "_", liga), ".png")), 
+           g, width = 16, height = 12)
     cat("Boxplots para la liga", liga, "exportados correctamente.\n")
   } else {
     cat("No hay suficientes datos para la liga:", liga, "\n")
@@ -971,8 +977,11 @@ for (liga in unique(datos_originales$League)) {
 }
 
 # Guardar el archivo Excel
-saveWorkbook(wb_liga, file = "Resultados_Analisis_Ligas.xlsx", overwrite = TRUE)
-cat("Resultados del análisis por liga exportados correctamente a Excel.\n")
+# Guardar el archivo Excel en la carpeta Descriptivos
+saveWorkbook(wb_liga, file = file.path(ruta_descriptivos, "Resultados_Analisis_Ligas.xlsx"), overwrite = TRUE)
+
+cat("Resultados del análisis por liga exportados correctamente a Excel en la carpeta Descriptivos.\n")
+
 
 # 6.5.
 # REGRESIONES
@@ -983,10 +992,10 @@ wb_regresion <- createWorkbook()
 # 6.5.1. REGRESIONES POR POSICIÓN
 
 # Crear modelo de regresión para cada posición
-for (position in unique(datos_originales$teamPosition)) {
+for (position in unique(datos_filtrados_mas_de_50$teamPosition)) {
   cat("\nModelo de regresión para la posición:", position, "\n")
   
-  datos_posicion <- datos_originales %>% filter(teamPosition == position)
+  datos_posicion <- datos_filtrados_mas_de_50 %>% filter(teamPosition == position)
   
   if (nrow(datos_posicion) > 0) {
     # Regresión múltiple
@@ -997,11 +1006,11 @@ for (position in unique(datos_originales$teamPosition)) {
     writeData(wb_regresion, paste0("Regresion_", position), as.data.frame(summary_modelo$coefficients))
     
     # Visualización de los residuos del modelo
-    png(filename = paste0("Residuos_Modelo_Posicion_", gsub("/", "_", position), ".png"))
+    png(filename = file.path(ruta_graficos, paste0("Residuos_Modelo_Posicion_", gsub("/", "_", position), ".png")))
     par(mfrow = c(2, 2))
     plot(modelo)
     dev.off()
-    cat("Gráficos de residuos para la posición", position, "exportados correctamente.\n")
+    cat("Gráficos de residuos para la posición", position, "exportados correctamente a la carpeta graficos.\n")
   } else {
     cat("No hay suficientes datos para la posición:", position, "\n")
   }
@@ -1010,10 +1019,10 @@ for (position in unique(datos_originales$teamPosition)) {
 
 # 6.5.2. REGRESIONES POR LIGAS
 # Crear modelo de regresión para cada liga
-for (liga in unique(datos_originales$League)) {
+for (liga in unique(datos_filtrados_mas_de_50$League)) {
   cat("\nModelo de regresión para la liga:", liga, "\n")
   
-  datos_liga <- datos_originales %>% filter(League == liga)
+  datos_liga <- datos_filtrados_mas_de_50 %>% filter(League == liga)
   
   if (nrow(datos_liga) > 0) {
     # Regresión múltiple
@@ -1024,19 +1033,19 @@ for (liga in unique(datos_originales$League)) {
     writeData(wb_regresion, paste0("Regresion_", liga), as.data.frame(summary_modelo$coefficients))
     
     # Visualización de los residuos del modelo
-    png(filename = paste0("Residuos_Modelo_Liga_", gsub("/", "_", liga), ".png"))
+    png(filename = file.path(ruta_graficos, paste0("Residuos_Modelo_Liga_", gsub("/", "_", liga), ".png")))
     par(mfrow = c(2, 2))
     plot(modelo)
     dev.off()
-    cat("Gráficos de residuos para la liga", liga, "exportados correctamente.\n")
+    cat("Gráficos de residuos para la liga", liga, "exportados correctamente a la carpeta graficos.\n")
   } else {
     cat("No hay suficientes datos para la liga:", liga, "\n")
   }
 }
 
-# Guardar el archivo Excel
-saveWorkbook(wb_regresion, file = "Resultados_Regresiones.xlsx", overwrite = TRUE)
-cat("Resultados de las regresiones exportados correctamente a Excel.\n")
+#Guardar el archivo Excel en la ruta modelizacion
+saveWorkbook(wb_regresion, file = file.path(ruta_modelizacion, "Resultados_Regresiones_posicion_y_ligas.xlsx"), overwrite = TRUE)
+cat("Resultados de las regresiones exportados correctamente a Excel en la carpeta modelizacion.\n")
 
 
 
