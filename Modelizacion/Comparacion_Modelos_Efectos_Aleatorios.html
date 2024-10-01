@@ -1,0 +1,31 @@
+
+<table style="text-align:center"><caption><strong>Comparación de Modelos Mixtos con Efectos Aleatorios</strong></caption>
+<tr><td colspan="7" style="border-bottom: 1px solid black"></td></tr><tr><td style="text-align:left"></td><td colspan="6"><em>Dependent variable:</em></td></tr>
+<tr><td></td><td colspan="6" style="border-bottom: 1px solid black"></td></tr>
+<tr><td style="text-align:left"></td><td colspan="6">measure</td></tr>
+<tr><td style="text-align:left"></td><td>Model A0</td><td>Model B0</td><td>Model C0</td><td>Model D0</td><td>Model E</td><td>Model D2</td></tr>
+<tr><td style="text-align:left"></td><td>(1)</td><td>(2)</td><td>(3)</td><td>(4)</td><td>(5)</td><td>(6)</td></tr>
+<tr><td colspan="7" style="border-bottom: 1px solid black"></td></tr><tr><td style="text-align:left">poly(Register, 2, raw = TRUE)1</td><td>0.017</td><td>0.017</td><td>0.017</td><td>0.017</td><td>0.017</td><td>0.017</td></tr>
+<tr><td style="text-align:left"></td><td>(0.016)</td><td>(0.016)</td><td>(0.016)</td><td>(0.026)</td><td>(0.016)</td><td>(0.016)</td></tr>
+<tr><td style="text-align:left"></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+<tr><td style="text-align:left">poly(Register, 2, raw = TRUE)2</td><td>0.006<sup>**</sup></td><td>0.006<sup>**</sup></td><td>0.006<sup>**</sup></td><td>0.006</td><td>0.006<sup>**</sup></td><td>0.006<sup>**</sup></td></tr>
+<tr><td style="text-align:left"></td><td>(0.003)</td><td>(0.003)</td><td>(0.003)</td><td>(0.005)</td><td>(0.003)</td><td>(0.003)</td></tr>
+<tr><td style="text-align:left"></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+<tr><td style="text-align:left">clusters_2B</td><td>0.183<sup>***</sup></td><td>0.183<sup>***</sup></td><td>0.183<sup>***</sup></td><td>0.183<sup>***</sup></td><td>0.183<sup>***</sup></td><td>0.183<sup>***</sup></td></tr>
+<tr><td style="text-align:left"></td><td>(0.025)</td><td>(0.025)</td><td>(0.026)</td><td>(0.040)</td><td>(0.025)</td><td>(0.025)</td></tr>
+<tr><td style="text-align:left"></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+<tr><td style="text-align:left">poly(Register, 2, raw = TRUE)1:clusters_2B</td><td>-0.012</td><td>-0.012</td><td>-0.012</td><td>-0.012</td><td>-0.012</td><td>-0.012</td></tr>
+<tr><td style="text-align:left"></td><td>(0.023)</td><td>(0.023)</td><td>(0.022)</td><td>(0.037)</td><td>(0.023)</td><td>(0.023)</td></tr>
+<tr><td style="text-align:left"></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+<tr><td style="text-align:left">poly(Register, 2, raw = TRUE)2:clusters_2B</td><td>-0.020<sup>***</sup></td><td>-0.020<sup>***</sup></td><td>-0.020<sup>***</sup></td><td>-0.020<sup>***</sup></td><td>-0.020<sup>***</sup></td><td>-0.020<sup>***</sup></td></tr>
+<tr><td style="text-align:left"></td><td>(0.004)</td><td>(0.004)</td><td>(0.004)</td><td>(0.007)</td><td>(0.004)</td><td>(0.004)</td></tr>
+<tr><td style="text-align:left"></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+<tr><td style="text-align:left">Constant</td><td>-0.088<sup>***</sup></td><td>-0.088<sup>***</sup></td><td>-0.088<sup>***</sup></td><td>-0.088<sup>***</sup></td><td>-0.088<sup>***</sup></td><td>-0.088<sup>***</sup></td></tr>
+<tr><td style="text-align:left"></td><td>(0.017)</td><td>(0.017)</td><td>(0.018)</td><td>(0.028)</td><td>(0.017)</td><td>(0.017)</td></tr>
+<tr><td style="text-align:left"></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+<tr><td colspan="7" style="border-bottom: 1px solid black"></td></tr><tr><td style="text-align:left">Observations</td><td>8,680</td><td>8,680</td><td>8,680</td><td>8,680</td><td>8,680</td><td>8,680</td></tr>
+<tr><td style="text-align:left">Log Likelihood</td><td>1,340.099</td><td>1,340.099</td><td>1,389.453</td><td>1,579.007</td><td>1,369.393</td><td>1,369.750</td></tr>
+<tr><td style="text-align:left">Akaike Inf. Crit.</td><td>-2,666.199</td><td>-2,664.199</td><td>-2,758.906</td><td>-3,132.013</td><td>-2,724.786</td><td>-2,723.499</td></tr>
+<tr><td style="text-align:left">Bayesian Inf. Crit.</td><td>-2,616.722</td><td>-2,607.654</td><td>-2,688.225</td><td>-3,040.128</td><td>-2,675.305</td><td>-2,666.949</td></tr>
+<tr><td colspan="7" style="border-bottom: 1px solid black"></td></tr><tr><td style="text-align:left"><em>Note:</em></td><td colspan="6" style="text-align:right"><sup>*</sup>p<0.1; <sup>**</sup>p<0.05; <sup>***</sup>p<0.01</td></tr>
+</table>

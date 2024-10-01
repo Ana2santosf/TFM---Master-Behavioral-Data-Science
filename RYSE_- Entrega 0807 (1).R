@@ -1,5 +1,4 @@
 
-
 # VERIFICACIÓN DE LOS PAQUETES Y LIBRERÍAS
 
 # Definir la función para instalar y cargar librerias
@@ -20,7 +19,7 @@ install_and_load <- function(package) {
 }
 
 # Lista de liberias necesarias
-libraries <- c("tidyverse", "GGally", "caret", "plm", "ggplot2", "readxl", "openxlsx", "psych", "pls", "here", "kml3d", "gridExtra")
+libraries <- c("tidyverse", "GGally", "caret", "plm", "ggplot2", "readxl", "openxlsx", "psych", "pls", "here", "kml3d", "gridExtra", "dyplr",  "nlme", "lme4", "stargazer", "emmeans", "kableExtra", "purrr")
 
 # Ejecutar la función para cada libreria en la lista
 lapply(libraries, install_and_load)
@@ -34,10 +33,22 @@ ruta_datos <- file.path(ruta, "Datos")
 ruta_depuracion <- file.path(ruta, "Depuracion_y_creacion_de_variables")
 ruta_descriptivos <- file.path(ruta, "Descriptivos")
 ruta_modelizacion <- file.path(ruta, "Modelizacion")
-ruta_graficos <- file.path(ruta, "Graficos")
-ruta_graficos_medias <- file.path(ruta_graficos, "Graficos - medias de variables")
-ruta_graficos_mediana <- file.path(ruta_graficos, "Graficos - medianas de variables")
 ruta_informe <- file.path(ruta, "Informe")
+ruta_graficos <- file.path(ruta, "Graficos")
+
+# Crear subcarpetas específicas dentro de la carpeta Graficos
+ruta_boxplots_ligas <- file.path(ruta_graficos, "Boxplots_Ligas")
+ruta_histogramas <- file.path(ruta_graficos, "Histogramas")
+ruta_clustering <- file.path(ruta_graficos, "Clustering")
+ruta_clustering_select_vars <- file.path(ruta_graficos, "Clustering_Select_Variables")
+ruta_graficos_medias <- file.path(ruta_graficos, "Graficos - medias de variables")
+ruta_graficos_medianas <- file.path(ruta_graficos, "Graficos - medianas de variables")
+ruta_pcr <- file.path(ruta_graficos, "PCR")
+ruta_pca <- file.path(ruta_graficos, "PCA")
+ruta_correlacion <- file.path(ruta_graficos, "Correlacion")
+ruta_graficos_modelos_mixtos <- file.path(ruta_graficos, "Modelos_Mixtos")
+
+
 
 
 # Crear las carpetas si no existen
@@ -45,13 +56,21 @@ dir.create(ruta_datos, recursive = TRUE, showWarnings = FALSE)
 dir.create(ruta_depuracion, recursive = TRUE, showWarnings = FALSE)
 dir.create(ruta_descriptivos, recursive = TRUE, showWarnings = FALSE)
 dir.create(ruta_modelizacion, recursive = TRUE, showWarnings = FALSE)
-dir.create(ruta_graficos, recursive = TRUE, showWarnings = FALSE)
-<<<<<<< HEAD
 dir.create(ruta_informe, recursive = TRUE, showWarnings = FALSE)
-=======
+dir.create(ruta_graficos, recursive = TRUE, showWarnings = FALSE)
+dir.create(ruta_boxplots_ligas, recursive = TRUE, showWarnings = FALSE)
+dir.create(ruta_histogramas, recursive = TRUE, showWarnings = FALSE)
+dir.create(ruta_clustering, recursive = TRUE, showWarnings = FALSE)
+dir.create(ruta_clustering_select_vars, recursive = TRUE, showWarnings = FALSE)
 dir.create(ruta_graficos_medias, recursive = TRUE, showWarnings = FALSE)
-dir.create(ruta_graficos_mediana , recursive = TRUE, showWarnings = FALSE)
->>>>>>> a4d724587616f4764f2d196d14d49373038d53a7
+dir.create(ruta_graficos_medianas , recursive = TRUE, showWarnings = FALSE)
+dir.create(ruta_pcr, recursive = TRUE, showWarnings = FALSE)
+dir.create(ruta_pca, recursive = TRUE, showWarnings = FALSE)
+dir.create(ruta_correlacion, recursive = TRUE, showWarnings = FALSE)
+dir.create(ruta_graficos_modelos_mixtos, recursive = TRUE, showWarnings = FALSE)
+
+
+
 
 
 # Leer los datos desde la carpeta Datos
@@ -274,7 +293,15 @@ datos_filtrados_mas_de_50 <- datos_sin_extremos %>%
 write.xlsx(datos_filtrados_mas_de_50, file = file.path(ruta_datos, "Datos_Filtrados_Mas_de_50_Partidas.xlsx"), overwrite = TRUE)
 
 
+# Crear dataframe para jugadores con menos o igual de 50 partidas
+datos_filtrados_menos_igual_50 <- datos_sin_extremos %>%
+  filter(summonerName %in% partidas_por_jugador$summonerName[partidas_por_jugador$num_partidas <= 50])
 
+# Verificar que el dataframe se ha creado correctamente
+head(datos_filtrados_menos_igual_50)
+
+# Guardar los datos filtrados de jugadores con <= 50 partidas
+write.xlsx(datos_filtrados_menos_igual_50, file = file.path(ruta_datos, "Datos_Filtrados_Menos_Igual_50_Partidas.xlsx"), overwrite = TRUE)
 
 
 
@@ -286,21 +313,26 @@ datos_agrupados_finales <- datos_filtrados_mas_de_50 %>%
   group_by(summonerName) %>%
   summarise(across(all_of(variables_numericas_preseleccion),
                    list(mean = ~ mean(.x, na.rm = TRUE),
-                        total = ~ sum(.x, na.rm = TRUE))),
+                        total = ~ sum(.x, na.rm = TRUE),
+                        median = ~ median(.x, na.rm = TRUE))),
             teamPosition = first(teamPosition),
             role = first(role),
             ELO = first(ELO),
             League = first(League),
-            win = first(win))
+            win = first(win)) %>%
+  ungroup()  # Aseguramos que se desagrupa al final
 
 # Renombrar columnas agregadas para asegurar consistencia
 datos_agrupados_finales <- datos_agrupados_finales %>%
   rename_with(~ sub("_mean$", ".mean", .x)) %>%
-  rename_with(~ sub("_total$", ".total", .x))
-
+  rename_with(~ sub("_total$", ".total", .x)) %>%
+  rename_with(~ sub("_median$", ".median", .x))  # Añadimos las columnas de mediana
 
 # Guardar los datos agrupados finales en la carpeta Descriptivos
 write.xlsx(datos_agrupados_finales, file = file.path(ruta_descriptivos, "Datos_Agrupados_Filtrado_Final.xlsx"), overwrite = TRUE)
+
+# Verificar los resultados
+head(datos_agrupados_finales)
 
 
 
@@ -345,7 +377,7 @@ p_hist_wr <- ggplot(datos_originales, aes(x = player.WR)) +
   theme_minimal()
 
 # Guardar el histograma como archivo PNG en la carpeta 'Graficos'
-ggsave(filename = file.path(ruta_graficos, "Histograma_player.WR.png"), plot = p_hist_wr, device = "png")
+ggsave(filename = file.path(ruta_histogramas, "Histograma_player.WR.png"), plot = p_hist_wr, device = "png")
 
 
 # Crear un histograma del número de partidas por jugador (vemos que hay una observacion atipica de 150+ partidas jugadas)
@@ -357,7 +389,7 @@ p_hist_partidas <- ggplot(partidas_por_jugador, aes(x = num_partidas)) +
   theme_minimal()
 
 # Guardar el histograma como archivo PNG en la carpeta 'Graficos'
-ggsave(filename = file.path(ruta_graficos, "Histograma_Partidas_Por_Jugador.png"), plot = p_hist_partidas, device = "png")
+ggsave(filename = file.path(ruta_histogramas, "Histograma_Partidas_Por_Jugador.png"), plot = p_hist_partidas, device = "png")
 
 # Crear un histograma de la distribución de 'player.WR' para jugadores con > 50 partidas
 p <- ggplot(datos_filtrados_mas_de_50, aes(x = player.WR)) +
@@ -368,7 +400,7 @@ p <- ggplot(datos_filtrados_mas_de_50, aes(x = player.WR)) +
   theme_minimal()
 
 # Guardar el histograma como archivo PNG en la carpeta 'Graficos'
-ggsave(filename = file.path(ruta_graficos, "Histograma_Player_WR_Mas_50.png"), plot = p, device = "png", width = 8, height = 6)
+ggsave(filename = file.path(ruta_histogramas, "Histograma_Player_WR_Mas_50.png"), plot = p, device = "png", width = 8, height = 6)
 
 # Crear un histograma de la distribución de 'player.WR' para jugadores con <= 50 partidas
 p2 <- ggplot(datos_filtrados_menos_igual_50, aes(x = player.WR)) +
@@ -379,7 +411,7 @@ p2 <- ggplot(datos_filtrados_menos_igual_50, aes(x = player.WR)) +
   theme_minimal()
 
 # Guardar el histograma como archivo PNG en la carpeta 'Graficos'
-ggsave(filename = file.path(ruta_graficos, "Histograma_Player_WR_Menos_Igual_50.png"), plot = p2, device = "png", width = 8, height = 6)
+ggsave(filename = file.path(ruta_histogramas, "Histograma_Player_WR_Menos_Igual_50.png"), plot = p2, device = "png", width = 8, height = 6)
 
 
 
@@ -503,10 +535,13 @@ variables_bivariadas_mean <- paste0(c("goldEarned", "kills", "deaths", "assists"
 cor_matrix <- cor(select(datos_agrupados_finales, all_of(variables_bivariadas_mean)), use = "complete.obs")
 
 # Visualización de la matriz de correlación
-ggcorr(select(datos_agrupados_finales, all_of(variables_bivariadas_mean)), label = TRUE)
+p_cor_matrix <- ggcorr(select(datos_agrupados_finales, all_of(variables_bivariadas_mean)), label = TRUE)
 
 # Guardar la matriz de correlación
 write.xlsx(cor_matrix, file = file.path(ruta_descriptivos, "Matriz_de_Correlacion.xlsx"), overwrite = TRUE)
+
+# Guardar el gráfico de la matriz de correlación como PNG en la carpeta 'Correlacion'
+ggsave(filename = file.path(ruta_correlacion, "Matriz_de_Correlacion.png"), plot = p_cor_matrix, device = "png", width = 8, height = 6)
 
 # Verificar el contenido de la matriz de correlación
 print(cor_matrix)
@@ -533,7 +568,7 @@ pca_todas_variables <- prcomp(datos_filtrados_mas_de_50_numericas, center = TRUE
 summary(pca_todas_variables)
 
 # Scree plot - visualización de la varianza explicada por cada componente
-png(file = file.path(ruta_graficos, "Scree_Plot_PCA_todas_variables.png"))
+png(file = file.path(ruta_pca, "Scree_Plot_PCA_todas_variables.png"))
 screeplot(pca_todas_variables, type = "lines", main = "Scree Plot PCA (todas variables) - Varianza Explicada")
 dev.off()
 
@@ -566,7 +601,7 @@ pca_variables_preseleccionadas <- prcomp(datos_pca_variables_preseleccionadas, c
 summary(pca_variables_preseleccionadas)
 
 # Visualización de la varianza explicada (Scree Plot)
-png(file = file.path(ruta_graficos, "Scree_Plot_PCA_variables_preseleccionadas.png"))
+png(file = file.path(ruta_pca, "Scree_Plot_PCA_variables_preseleccionadas.png"))
 screeplot(pca_variables_preseleccionadas, type = "lines", main = "Scree Plot PCA (variables preseleccionadas) - Varianza Explicada")
 dev.off()
 
@@ -588,7 +623,6 @@ print(loadings_pca_variables_preseleccionadas)
 # observamos que la variabza explicada en el segundo PCA (variables preseleccionadas) es mucho mayor para los primeros componentes, lo que suigiere que
 # nuestras variables preseleccionadas capturan mas patrones significativos en los datos. El otro PCA (con todas las variables) diluye la varianza en muchas dimensiones, lo que indica que hay muchas variables irrelevantes.
 # Por tanto, proseguimos exclusivamente a hacer el PCR con las variables preseleccionadas.
-
 
 
 
@@ -621,12 +655,12 @@ write.xlsx(loadings_pcr, file = file.path(ruta_modelizacion, "Cargas_Componentes
 
 
 # Visualización de los componentes principales
-png(file = file.path(ruta_graficos, "Validacion_PCR_MSEP.png"))
+png(file = file.path(ruta_pcr, "Validacion_PCR_MSEP.png"))
 validationplot(pcr_model_con_interacciones, val.type = "MSEP")
 dev.off()
 
 # Visualización de los loadings de los componentes principales
-png(file = file.path(ruta_graficos, "Loadings_Componentes_PCR.png"))
+png(file = file.path(ruta_pcr, "Loadings_Componentes_PCR.png"))
 barplot(loadings(pcr_model_con_interacciones), main = "Cargas de los Componentes Principales (PCR)")
 dev.off()
 
@@ -636,58 +670,16 @@ cat("Modelo PCR y gráficos guardados correctamente.")
 loadings(pcr_model_con_interacciones)
 
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-
-
-# 6.2.
-# Análisis individualizado por liga (datos sin extremos)
-analisis_por_liga <- datos_agrupados_finales %>%
-  group_by(League) %>%
-  summarise(across(ends_with(".mean"), list(mean = ~ mean(.x, na.rm = TRUE),
-                                            sd = ~ sd(.x, na.rm = TRUE),
-                                            min = ~ min(.x, na.rm = TRUE),
-                                            `25%` = ~ quantile(.x, 0.25, na.rm = TRUE),
-                                            `50%` = ~ median(.x, na.rm = TRUE),
-                                            `75%` = ~ quantile(.x, 0.75, na.rm = TRUE),
-                                            max = ~ max(.x, na.rm = TRUE)))) %>%
-  pivot_longer(cols = -League, names_to = c("variable", "stat"), names_sep = "_")
-
-# Convertir las listas en columnas atómicas (ajustando según las columnas presentes)
-analisis_por_liga <- analisis_por_liga %>%
-  pivot_wider(names_from = stat, values_from = value) %>%
-  unnest(cols = c(mean, sd, min, `25%`, `50%`, `75%`, max))
-
-# Mostrar el resultado
-print(analisis_por_liga)
-
-# Convertir el análisis por liga en un data.frame
-analisis_por_liga_df <- as.data.frame(analisis_por_liga)
-
-# Guardar el análisis por liga en formato Excel en la carpeta de Modelización
-write.xlsx(analisis_por_liga_df, file = file.path(ruta_modelizacion, "Analisis_Por_Liga.xlsx"), overwrite = TRUE)
-
-
-
-
-
-# 6.3.
-=======
-################### FALTA REVISAR DE AQUI PARA ABAJO + GUARDAR OUTPUTS EN CARPETAS CORRESPONDIENTES
-=======
->>>>>>> a4d724587616f4764f2d196d14d49373038d53a7
 
 # 6.2. CLUSTERING LONGITUDINAL
 # 6.2.0 TRABAJO PREVIO - ADAPTANDO NUESTRA BBDD
 
-<<<<<<< HEAD
-# 6.2.
->>>>>>> a8d1525ab04fcca5180e2b3308975677874ea6f6
+
 # ANÁLISIS LONGITUDINAL Y CLUSTERING
-=======
+
 # Verificar si hay datos faltantes en nuestra BBDD: vemos que no hay (ergo no hace falta imputar)
 colSums(is.na(datos_filtrados_mas_de_50))
->>>>>>> a4d724587616f4764f2d196d14d49373038d53a7
+
 
 
 # Dividir partidas en trimestres
@@ -728,9 +720,11 @@ goldEarnedPerMinute_per_quarter_non_utility <- goldEarnedPerMinute_per_quarter %
 utility_players_sample <- sample(unique(goldEarnedPerMinute_per_quarter_utility$summonerName), 15)
 non_utility_players_sample <- sample(unique(goldEarnedPerMinute_per_quarter_non_utility$summonerName), 15)
 
-<<<<<<< HEAD
+
 # Guardar el análisis de oro acumulado por trimestre y cambios en Descriptivos
-write.xlsx(goldEarned_cumulative_quarter, file = file.path(ruta_descriptivos, "Gold_Earned_Cumulative_Per_Quarter.xlsx"), overwrite = TRUE)
+#write.xlsx(goldEarned_cumulative_quarter, file = file.path(ruta_descriptivos, "Gold_Earned_Cumulative_Per_Quarter.xlsx"), overwrite = TRUE)
+#No creado --> goldEarned_cumulative_quarter
+
 
 # Guardar los datos completos filtrados en Modelización
 write.xlsx(datos_filtrados_mas_de_50, file = file.path(ruta_modelizacion, "Datos_Filtrados_Mas_de_50_con_Oro_Acumulado.xlsx"), overwrite = TRUE)
@@ -740,45 +734,44 @@ write.xlsx(datos_filtrados_mas_de_50, file = file.path(ruta_modelizacion, "Datos
 
 
 
-
-
-
-
-
-######
-############################
-################### REVISAR DE AQUI PARA ABAJO
-
-
-###FALTA REVISAR Y GUARDAR EN CARPETAS CORRESPONDIENTES DE AQUI PARA ABAJO
-
-=======
 # Filtrar dataset para solo incluir 15 jugadores (UTILITY y otras posiciones)
 goldEarnedPerMinute_utility_sample <- goldEarnedPerMinute_per_quarter_utility %>%
-  filter(summonerName %in% utility_players_sample)
->>>>>>> a4d724587616f4764f2d196d14d49373038d53a7
+filter(summonerName %in% utility_players_sample)
 
-goldEarnedPerMinute_non_utility_sample <- goldEarnedPerMinute_per_quarter_non_utility %>%
-  filter(summonerName %in% non_utility_players_sample)
+
+#goldEarnedPerMinute_non_utility_sample <- goldEarnedPerMinute_per_quarter_non_utility %>%
+ # filter(summonerName %in% non_utility_players_sample)
 
 # Visualizar el rendimiento de las posiciones UTILITY (muestra)
-png(file = file.path(ruta_graficos, "goldEarnedPerMinute_UTILITY_muestra.png"))
-ggplot(goldEarnedPerMinute_utility_sample, aes(x = quarter, y = goldEarnedPerMinute_total, color = summonerName, group = summonerName)) +
+p <- ggplot(goldEarnedPerMinute_utility_sample, aes(x = quarter, y = goldEarnedPerMinute_total, color = summonerName, group = summonerName)) +
   geom_line() +
   labs(title = "goldEarnedPerMinute por trimestre para UTILITY (muestra)",
        x = "Quarter",
        y = "Total Gold Earned per Minute (Utility)") +
   theme_minimal()
+
+# Imprimir el gráfico para verificarlo antes de guardarlo
+print(p)
+
+#Guardar
+png(file = file.path(ruta_clustering, "goldEarnedPerMinute_UTILITY_muestra.png"))
+print(p)
 dev.off()
 
 # Visualizar el rendimiento de las posiciones NO UTILITY (muestra)
-png(file = file.path(ruta_graficos, "goldEarnedPerMinute_NO_UTILITY_muestra.png"))
-ggplot(goldEarnedPerMinute_non_utility_sample, aes(x = quarter, y = goldEarnedPerMinute_total, color = summonerName, group = summonerName)) +
+p1 <- ggplot(goldEarnedPerMinute_non_utility_sample, aes(x = quarter, y = goldEarnedPerMinute_total, color = summonerName, group = summonerName)) +
   geom_line() +
   labs(title = "goldEarnedPerMinute por trimestre para NO UTILITY (muestra)",
        x = "Quarter",
        y = "Total Gold Earned per Minute (Non-Utility)") +
   theme_minimal()
+
+# Imprimir el gráfico para verificarlo antes de guardarlo
+print(p1)
+
+#Guardar
+png(file = file.path(ruta_clustering, "goldEarnedPerMinute_NO_UTILITY_muestra.png"))
+print(p1)
 dev.off()
 
 
@@ -834,20 +827,39 @@ BD.kml_long_5 <- BD.kml_long %>%
 
 # Visualizar el rendimiento de los jugadores en cada cluster
 # Gráfico de 2 clusters (y lo guardamos)
-png(file = file.path(ruta_graficos, "trayectorias_oro_por_minuto_2_clusters.png"))
-ggplot(BD.kml_long_2, aes(x = quarter, y = goldEarnedPerMinute_total, color = as.factor(clusters), group = summonerName)) +
+
+p2 <- ggplot(BD.kml_long_2, aes(x = quarter, y = goldEarnedPerMinute_total, color = as.factor(clusters), group = summonerName)) +
   geom_line() +
   labs(title = "Trayectorias de oro por minuto acumulado (2 clusters)", x = "Quarter", y = "Oro acumulado por minuto", color = "Cluster") +
   theme_minimal()
+
+#Imprimir
+print(p2)
+
+#Guardar
+png(file = file.path(ruta_clustering, "trayectorias_oro_por_minuto_2_clusters.png"))
+print(p2)
 dev.off()
 
 # Gráfico de 5 clusters (y lo guardamos)
-png(file = file.path(ruta_graficos, "trayectorias_oro_por_minuto_5_clusters.png"))
-ggplot(BD.kml_long_5, aes(x = quarter, y = goldEarnedPerMinute_total, color = as.factor(clusters), group = summonerName)) +
+
+p3 <- ggplot(BD.kml_long_5, aes(x = quarter, y = goldEarnedPerMinute_total, color = as.factor(clusters), group = summonerName)) +
   geom_line() +
   labs(title = "Trayectorias de oro por minuto acumulado (5 clusters)", x = "Quarter", y = "Oro acumulado por minuto", color = "Cluster") +
   theme_minimal()
+
+#Imprimir
+print(p3)
+
+#Guardar
+png(file = file.path(ruta_clustering, "trayectorias_oro_por_minuto_5_clusters.png"))
+print(p3)
 dev.off()
+
+
+
+
+
 
 # 6.2.1.2 EJECUTANDO EL CLUSTERING SOBRE DATOS DIFERENCIADOS ENTRE UTILITY Y NO UTILITY, PARA VER SI HAY DIFERENCIAS
 
@@ -940,41 +952,442 @@ BD.kml_long_utility_5 <- BD.kml_long_utility %>%
   mutate(clusters = clusters_5)  # Clusters con 5 particiones
 
 
+
+
 # VISUALIZACIÓN
 
 # Gráfico de 2 clusters para NO UTILITY (y lo guardamos)
-png(file = file.path(ruta_graficos, "trayectorias_oro_por_minuto_2_clusters_NO_UTILITY.png"))
-ggplot(BD.kml_long_non_utility_2, aes(x = quarter, y = goldEarnedPerMinute_total, color = as.factor(clusters), group = summonerName)) +
+
+p4_non_utility <- ggplot(BD.kml_long_non_utility_2, aes(x = quarter, y = goldEarnedPerMinute_total, color = as.factor(clusters), group = summonerName)) +
   geom_line() +
   labs(title = "Trayectorias de oro por minuto acumulado (2 clusters) NO UTILITY", x = "Quarter", y = "Oro acumulado por minuto", color = "Cluster") +
   theme_minimal()
+
+#Imprimir
+print(p4_non_utility)
+
+#Guardar
+png(file = file.path(ruta_clustering, "trayectorias_oro_por_minuto_2_clusters_NO_UTILITY.png"))
+print(p4_non_utility)
 dev.off()
 
 # Gráfico de 5 clusters para NO UTILITY
-png(file = file.path(ruta_graficos, "trayectorias_oro_por_minuto_5_clusters_NO_UTILITY.png"))
-ggplot(BD.kml_long_non_utility_5, aes(x = quarter, y = goldEarnedPerMinute_total, color = as.factor(clusters), group = summonerName)) +
+
+p5_non_utility <- ggplot(BD.kml_long_non_utility_5, aes(x = quarter, y = goldEarnedPerMinute_total, color = as.factor(clusters), group = summonerName)) +
   geom_line() +
   labs(title = "Trayectorias de oro por minuto acumulado (5 clusters) NO UTILITY", x = "Quarter", y = "Oro acumulado por minuto", color = "Cluster") +
   theme_minimal()
+
+#Imprimir
+print(p5_non_utility)
+
+#Guardar
+png(file = file.path(ruta_clustering, "trayectorias_oro_por_minuto_5_clusters_NO_UTILITY.png"))
+print(p5_non_utility)
 dev.off()
 
 # Gráfico de 2 clusters para UTILITY
-png(file = file.path(ruta_graficos, "trayectorias_oro_por_minuto_2_clusters_UTILITY.png"))
-ggplot(BD.kml_long_utility_2, aes(x = quarter, y = goldEarnedPerMinute_total, color = as.factor(clusters), group = summonerName)) +
+
+p6_utility <- ggplot(BD.kml_long_utility_2, aes(x = quarter, y = goldEarnedPerMinute_total, color = as.factor(clusters), group = summonerName)) +
   geom_line() +
   labs(title = "Trayectorias de oro por minuto acumulado (2 clusters) UTILITY", x = "Quarter", y = "Oro acumulado por minuto", color = "Cluster") +
   theme_minimal()
+
+#Imprimir
+print(p6_utility)
+
+#Guardar
+png(file = file.path(ruta_clustering, "trayectorias_oro_por_minuto_2_clusters_UTILITY.png"))
+print(p6_utility)
 dev.off()
 
 # Gráfico de 5 clusters para UTILITY
-png(file = file.path(ruta_graficos, "trayectorias_oro_por_minuto_5_clusters_UTILITY.png"))
-ggplot(BD.kml_long_utility_5, aes(x = quarter, y = goldEarnedPerMinute_total, color = as.factor(clusters), group = summonerName)) +
+
+p7_utility <- ggplot(BD.kml_long_utility_5, aes(x = quarter, y = goldEarnedPerMinute_total, color = as.factor(clusters), group = summonerName)) +
   geom_line() +
   labs(title = "Trayectorias de oro por minuto acumulado (5 clusters) UTILITY", x = "Quarter", y = "Oro acumulado por minuto", color = "Cluster") +
   theme_minimal()
+
+#Imprimir
+print (p7_utility)
+
+#Guardar
+png(file = file.path(ruta_clustering, "trayectorias_oro_por_minuto_5_clusters_UTILITY.png"))
+print (p7_utility)
 dev.off()
 
 
+
+
+# 6.2.2 Clustering con algunas de las Variables Preseleccionadas en la Sección 3
+# "goldEarned", "assists", "champExperience", "totalMinionsKilled", "deaths"
+
+# Seleccionar las nuevas variables adicionales para el clustering
+variables_seleccionadas <- c("goldEarned", "assists", "champExperience", "totalMinionsKilled", "deaths")
+
+# Filtrar los datos con las variables seleccionadas
+datos_para_clustering_seleccion <- datos_filtrados_mas_de_50 %>%
+  select(summonerName, quarter, all_of(variables_seleccionadas)) %>%
+  drop_na()
+
+# Escalar las variables seleccionadas para que todas tengan el mismo peso
+datos_escalados_seleccion <- datos_para_clustering_seleccion %>%
+  group_by(summonerName) %>%
+  mutate(across(all_of(variables_seleccionadas), scale)) %>%
+  ungroup()
+
+# Reestructurar los datos en formato wide aplicando una función de resumen (mean)
+BD.kml_seleccion <- datos_escalados_seleccion %>%
+  pivot_wider(
+    names_from = quarter, 
+    values_from = c(goldEarned, assists, champExperience, totalMinionsKilled, deaths), 
+    names_prefix = "quarter_",
+    values_fn = list(goldEarned = mean, assists = mean, champExperience = mean, totalMinionsKilled = mean, deaths = mean),
+    values_fill = NA
+  )
+
+# Visualizar la estructura del objeto
+str(BD.kml_seleccion)
+
+# Crear el objeto de clustering longitudinal con las nuevas variables seleccionadas
+cldGE_seleccion <- cld3d(data.frame(BD.kml_seleccion), timeInData = list(goldearned = 2:5))
+
+# Aplicar el algoritmo kml3d para el clustering longitudinal
+kml3d(cldGE_seleccion, nbRedrawing = 50)
+
+# Visualización
+BD.kml_long_seleccion <- BD.kml_seleccion %>%
+  pivot_longer(
+    cols = matches("quarter_"),  # Seleccionar todas las columnas que contienen "quarter_"
+    names_to = c(".value", "quarter"),  # Dividir el nombre en dos partes: la variable y el trimestre
+    names_pattern = "(.*)_quarter_(.*)"  # Regex para dividir los nombres de las columnas
+  ) %>%
+  mutate(quarter = as.numeric(quarter))  # Convertir la parte de "quarter" en numérico
+
+# Visualización
+BD.kml_long_seleccion <- BD.kml_seleccion %>%
+  pivot_longer(
+    cols = matches("quarter_"),  # Seleccionar todas las columnas que contienen "quarter_"
+    names_to = c(".value", "quarter"),  # Dividir el nombre en dos partes: la variable y el trimestre
+    names_pattern = "(.*)_quarter_(.*)"  # Regex para dividir los nombres de las columnas
+  ) %>%
+  mutate(quarter = as.numeric(quarter))  # Convertir la parte de "quarter" en numérico
+
+
+# Obtener los clusters para 2 y 5 particiones
+clusters_2 <- getClusters(cldGE_seleccion, 2)
+clusters_5 <- getClusters(cldGE_seleccion, 5)
+
+# Verificar el número de jugadores únicos en el dataframe largo
+jugadores_unicos <- unique(BD.kml_long_seleccion$summonerName)
+
+# Asegurarnos de que el número de jugadores únicos coincida con el tamaño de clusters_2 y clusters_5
+if (length(jugadores_unicos) == length(clusters_2) && length(jugadores_unicos) == length(clusters_5)) {
+  
+  # Crear un dataframe de jugadores y sus clusters
+  clusters_df <- data.frame(summonerName = jugadores_unicos, 
+                            clusters_2 = clusters_2, 
+                            clusters_5 = clusters_5)
+  
+  # Unir los clusters al dataframe largo
+  BD.kml_long_seleccion <- BD.kml_long_seleccion %>%
+    left_join(clusters_df, by = "summonerName")  # Unir los clusters por 'summonerName'
+} else {
+  stop("El número de jugadores en clusters no coincide con el número de jugadores únicos en el dataframe.")
+}
+
+
+# Función para graficar las trayectorias agrupadas por clusters
+graficar_trayectorias_clusters <- function(variable, cluster_col) {
+  ggplot(BD.kml_long_seleccion, aes(x = quarter, y = .data[[variable]], color = as.factor(.data[[cluster_col]]), group = summonerName)) +
+    geom_line() +
+    labs(title = paste("Trayectorias de", variable, "por trimestre (", cluster_col, ")"), x = "Trimestre", y = variable, color = "Cluster") +
+    theme_minimal() +
+    theme(legend.position = "none")  # Ocultar la leyenda para mayor claridad
+}
+
+# Variables a graficar
+variables_para_graficos <- c("goldEarned", "assists", "champExperience", "totalMinionsKilled", "deaths")
+
+# Generar y guardar gráficos para 2 clusters
+walk(variables_para_graficos, function(variable) {
+  p <- graficar_trayectorias_clusters(variable, "clusters_2")
+  ggsave(file.path(ruta_clustering_select_vars, paste0("trayectorias_", variable, "_2_clusters.png")), plot = p, width = 8, height = 6)
+})
+
+# Generar y guardar gráficos para 5 clusters
+walk(variables_para_graficos, function(variable) {
+  p <- graficar_trayectorias_clusters(variable, "clusters_5")
+  ggsave(file.path(ruta_clustering_select_vars, paste0("trayectorias_", variable, "_5_clusters.png")), plot = p, width = 8, height = 6)
+})
+
+
+
+
+
+
+# 6.3. MODELOS MIXTOS 
+# Variables a utilizar (ajustamos goldEarned a goldEarnedPerMinute)
+variables_seleccionadas <- c("goldEarnedPerMinute", "assists", "champExperience", "totalMinionsKilled", "deaths")
+
+# Filtrar los datos con las variables seleccionadas
+datos_para_clustering_seleccion <- datos_filtrados_mas_de_50 %>%
+  select(summonerName, quarter, all_of(variables_seleccionadas)) %>%
+  drop_na()
+
+# Escalar las variables seleccionadas
+datos_escalados_seleccion <- datos_para_clustering_seleccion %>%
+  group_by(summonerName) %>%
+  mutate(across(all_of(variables_seleccionadas), scale)) %>%
+  ungroup()
+
+# Reestructurar los datos en formato wide aplicando una función de resumen (mean)
+BD.kml_seleccion <- datos_escalados_seleccion %>%
+  pivot_wider(
+    names_from = quarter, 
+    values_from = c(goldEarnedPerMinute, assists, champExperience, totalMinionsKilled, deaths), 
+    names_prefix = "quarter_",
+    values_fn = list(goldEarnedPerMinute = mean, assists = mean, champExperience = mean, totalMinionsKilled = mean, deaths = mean),
+    values_fill = NA
+  )
+
+clusters_2 <- getClusters(cldGE_seleccion, 2)  # Obtener los clusters para 2 particiones
+
+# Asegurarse de que clusters_2 está presente en el dataframe
+BD.kml_seleccion <- BD.kml_seleccion %>%
+  mutate(clusters_2 = clusters_2)
+
+# Reorganizar los datos a formato largo usando pivot_longer()
+tempdat <- BD.kml_seleccion %>%
+  pivot_longer(
+    cols = matches("_quarter_"),  # Seleccionar todas las columnas que contienen "_quarter_"
+    names_to = c("variable", "Quarter"),  # Dividir los nombres en "variable" y "Quarter"
+    names_pattern = "(.*)_quarter_(.*)",  # Patrón para dividir el nombre de la columna
+    values_to = "measure"  # Columna que contendrá los valores de las variables
+  ) %>%
+  mutate(Register = as.numeric(Quarter)) %>%  # Convertir la parte del trimestre a numérico
+  select(summonerName, variable, measure, Register, clusters_2) %>%
+  arrange(summonerName)
+
+# Ver los primeros datos para asegurarnos de que están bien formateados
+head(tempdat)
+
+
+
+# Paso 1: Modelo sobreespecificado con distintas estructuras aleatorias
+# Ajustamos varios modelos con diferentes estructuras aleatorias para seleccionar la mejor
+
+# Control para aumentar el límite de iteraciones del optimizador
+control_lme <- lmeControl(opt = "optim", maxIter = 100, msMaxIter = 100)
+
+mod.A0 <- gls(measure ~ 1 + poly(Register, 2, raw = TRUE) * clusters_2, 
+              data = tempdat, method = 'REML', na.action = na.exclude)
+
+mod.B0 <- lme(fixed = measure ~ 1 + poly(Register, 2, raw = TRUE) * clusters_2, 
+              random = ~1 | summonerName, data = tempdat, na.action = na.exclude, control = control_lme)
+
+mod.C0 <- lme(fixed = measure ~ 1 + poly(Register, 2, raw = TRUE) * clusters_2, 
+              random = ~Register | summonerName, data = tempdat, na.action = na.exclude, control = control_lme)
+
+mod.D0 <- lme(fixed = measure ~ 1 + poly(Register, 2, raw = TRUE) * clusters_2, 
+              random = ~poly(Register, 2, raw = TRUE) | summonerName, data = tempdat, na.action = na.exclude, control = control_lme)
+
+
+
+# Paso 2: Estructura óptima de la parte aleatoria del modelo
+# Evaluar modelos
+
+# Guardar los resultados en un data frame
+modelos_mixtos_df <- data.frame(
+  Modelo = c("mod.A0", "mod.B0", "mod.C0", "mod.D0"),
+  AIC = c(AIC(mod.A0), AIC(mod.B0), AIC(mod.C0), AIC(mod.D0)),
+  BIC = c(BIC(mod.A0), BIC(mod.B0), BIC(mod.C0), BIC(mod.D0))
+)
+
+# Guardar los resultados en la carpeta de Modelización
+write.xlsx(modelos_mixtos_df, file = file.path(ruta_modelizacion, "Modelos_Mixtos_AIC_BIC.xlsx"), overwrite = TRUE)
+
+# Ver el dataframe con los resultados
+modelos_mixtos_df
+
+
+#El modelo con el AIC más bajo es el mod.D0 con un valor de -3132.013, lo que indica que este es el mejor modelo en términos de ajuste entre los cuatro
+#Lo mismo ocurre con el BIC, donde mod.D0 tiene el valor más bajo (-3040.128), lo que refuerza la selección de este modelo como el mejor
+
+
+# Paso 3: Estructura óptima de la parte fija del modelo
+# Probar diferentes partes fijas con AIC y ANOVA
+mod.A <- gls(measure ~ 1, data = tempdat, method = 'ML', na.action = na.exclude)
+mod.B <- gls(measure ~ 1 + Register, data = tempdat, method = 'ML', na.action = na.exclude)
+mod.C <- gls(measure ~ 1 + poly(Register, 2, raw = TRUE), data = tempdat, method = 'ML', na.action = na.exclude)
+mod.D <- gls(measure ~ 1 + poly(Register, 2, raw = TRUE) + clusters_2, data = tempdat, method = 'ML', na.action = na.exclude)
+mod.E <- gls(measure ~ 1 + poly(Register, 2, raw = TRUE) * clusters_2, data = tempdat, method = 'ML', na.action = na.exclude)
+
+# Comparar modelos con AIC
+anova_resultados <- anova(mod.A, mod.B, mod.C, mod.D, mod.E)
+
+# Guardar los resultados del ANOVA en un archivo Excel en la carpeta de Modelización
+write.xlsx(as.data.frame(anova_resultados), file = file.path(ruta_modelizacion, "Resultados_Estructura_Fija.xlsx"), overwrite = TRUE)
+
+# Verificar los resultados
+print(anova_resultados)
+
+
+
+
+# Paso 4: Añadiendo heterocedasticidad debida al clúster
+# Creamos una función de varianza con heterocedasticidad para los clústeres
+vfopt <- varIdent(form = ~1 | clusters_2)
+
+# Aplicamos la estructura óptima fija con heterocedasticidad en mod.D2
+mod.D2 <- gls(measure ~ 1 + poly(Register, 2, raw = TRUE) * clusters_2, 
+              data = tempdat, method = 'ML', weights = vfopt, na.action = na.exclude)
+
+# Comparar el modelo original con el nuevo modelo con heterocedasticidad
+anova_resultados_hetero <- anova(mod.E, mod.D2)
+
+# Guardar los resultados de ANOVA en un archivo Excel en la carpeta de Modelización
+write.xlsx(as.data.frame(anova_resultados_hetero), file = file.path(ruta_modelizacion, "Resultados_Heterocedasticidad.xlsx"), overwrite = TRUE)
+
+# Verificar los resultados
+print(anova_resultados_hetero)
+
+
+
+
+# Tabla resumen de los modelos de efectos aleatorios estimados
+#Utiliza stargazer para comparar los modelos
+
+# Comparar los modelos utilizando stargazer
+stargazer(mod.A0, mod.B0, mod.C0, mod.D0, mod.E, mod.D2, type = 'html',
+          title = 'Comparación de Modelos Mixtos con Efectos Aleatorios',
+          column.labels = c('Model A0', 'Model B0', 'Model C0', 'Model D0', 'Model E', 'Model D2'),
+          model.names = FALSE,
+          out = file.path(ruta_modelizacion, "Comparacion_Modelos_Efectos_Aleatorios.html"))
+
+# Mensaje de confirmación
+cat("Tabla comparativa de modelos guardada en la carpeta de modelización como 'Comparacion_Modelos_Efectos_Aleatorios.html'")
+
+
+
+
+# Gráfico de medias marginales para el modelo que mejor ajusta D2: crecimiento cuadrático más clusters
+
+# Obtener las medias marginales
+ls.tabla <- data.frame(summary(emmeans(mod.D2, pairwise ~ clusters_2 * Register, 
+                                       at = list(Register = c(1, 2, 3, 4)))))
+
+# Inspeccionar los nombres de las columnas para ver cómo se llaman los intervalos de confianza
+print(colnames(ls.tabla))
+
+# Graficar las medias marginales ajustando los nombres de las columnas de acuerdo con los intervalos de confianza
+pa <- ggplot(ls.tabla, aes(x = Register, y = emmean, linetype = as.factor(clusters_2))) + 
+  geom_errorbar(aes(ymin = lower.CL, ymax = upper.CL), width = 0.2) +
+  geom_line() +
+  geom_point(aes(y = emmean), size = 3, shape = 21, fill = "white") +
+  labs(x = "Quarter", y = "Gold Earned Per Minute Mean ± 2SE", 
+       title = "Gold Earned Per Minute by Quarter", linetype = "Cluster") +
+  theme_bw()
+
+# Guardar el gráfico en la carpeta de modelos mixtos
+ggsave(filename = file.path(ruta_graficos_modelos_mixtos, "Medias_Marginales_GoldEarnedPerMinute.png"), 
+       plot = pa, width = 8, height = 6)
+
+
+
+
+# Contrastes múltiples entre grupos por trimestre 
+contrastes_grupos <- emmeans(mod.D2, pairwise ~ clusters_2 | Register, 
+                             at = list(Register = c(1, 2, 3, 4)), 
+                             data = tempdat, adjust = "tukey")
+
+# Mostrar la tabla de contrastes
+contrastes_grupos$contrasts %>%
+  kable("html", caption = "Contrastes Múltiples entre Grupos por Trimestre") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>%
+  save_kable(file = file.path(ruta_modelizacion, "Contrastes_Múltiples_Grupos_Trimestre.html"))
+
+
+# Contrastes múltiples entre trimestres por grupo 
+contrastes_trimestres <- emmeans(mod.D2, pairwise ~ Register | clusters_2, 
+                                 at = list(Register = c(1, 2, 3, 4)), 
+                                 data = tempdat, adjust = "tukey")
+
+# Mostrar la tabla de contrastes
+contrastes_trimestres$contrasts %>%
+  kable("html", caption = "Contrastes Múltiples entre Trimestres por Grupo") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>%
+  save_kable(file = file.path(ruta_modelizacion, "Contrastes_Múltiples_Trimestres_Grupo.html"))
+
+
+
+
+
+
+
+# 6.4. ANÁLISIS POR LIGAS
+
+# Análisis individualizado por liga (datos sin extremos)
+analisis_por_liga <- datos_agrupados_finales %>%
+  group_by(League) %>%
+  summarise(across(ends_with(".mean"), list(
+    mean = ~ mean(.x, na.rm = TRUE),
+    sd = ~ sd(.x, na.rm = TRUE),
+    min = ~ min(.x, na.rm = TRUE),
+    `25%` = ~ quantile(.x, 0.25, na.rm = TRUE),
+    `50%` = ~ median(.x, na.rm = TRUE),
+    `75%` = ~ quantile(.x, 0.75, na.rm = TRUE),
+    max = ~ max(.x, na.rm = TRUE)
+  )))
+
+# Convertir las listas en columnas atómicas, si es necesario
+analisis_por_liga_long <- analisis_por_liga %>%
+  pivot_longer(cols = -League, names_to = c("variable", "stat"), names_sep = "_")
+
+# Mostrar el resultado del análisis por liga
+print(analisis_por_liga_long)
+
+# Convertir el análisis por liga en un data frame
+analisis_por_liga_df <- as.data.frame(analisis_por_liga_long)
+
+# Guardar el análisis por liga en formato Excel en la carpeta de Modelización
+write.xlsx(analisis_por_liga_df, file = file.path(ruta_modelizacion, "Analisis_Por_Liga.xlsx"), overwrite = TRUE)
+
+
+
+# Generar Boxplots comparando ligas simultáneamente para cada variable
+for (var in variables_numericas_preseleccion) {
+  p <- ggplot(datos_filtrados_mas_de_50, aes(x = League, y = .data[[var]], fill = League)) +
+    geom_boxplot() +
+    labs(title = paste("Boxplot de", var, "por liga"), x = "Liga", y = var) +
+    theme_minimal() +
+    theme(legend.position = "none")  # Opcional, para eliminar la leyenda
+  
+  # Guardar el gráfico en la carpeta de gráficos
+  ggsave(filename = file.path(ruta_boxplots_ligas, paste0("Boxplot_comparacion_por_liga", var, ".png")), 
+         plot = p, width = 10, height = 6)
+  
+  cat("Boxplot comparativo para", var, "exportado correctamente.\n")
+}
+
+
+
+
+
+
+
+
+
+########
+########
+########
+#######
+########
+#######
+#######
+#######
+#######
+###################################### VER DE AQUI PARA ABAJO
 
 # # 6.2.2. CLUSTERING CON VALORES RELATIVOS DE CAMBIO POR TRIMESTRE (porcentajes)
 
@@ -1189,53 +1602,20 @@ contrastes$contrasts %>% kable(type='response') %>% kable_styling()
 
 
 
-# 6.3. ANÁLISIS POR LIGAS
 
-# Crear un libro de trabajo para los resultados de ligas
-wb_liga <- createWorkbook()
 
-# Analizar rendimiento por liga y generar estadísticas descriptivas para cada liga
-for (liga in unique(datos_filtrados_mas_de_50$League)) {
-  cat("\nAnálisis para la liga:", liga, "\n")
-  
-  datos_liga <- datos_filtrados_mas_de_50 %>% filter(League == liga)
-  
-  if (nrow(datos_liga) > 0) {
-    summary_stats <- datos_liga %>% summarise(across(all_of(variables_numericas_preseleccion), list(mean = ~ mean(.x, na.rm = TRUE),
-                                                                                                    sd = ~ sd(.x, na.rm = TRUE),
-                                                                                                    min = ~ min(.x, na.rm = TRUE),
-                                                                                                    `25%` = ~ quantile(.x, 0.25, na.rm = TRUE),
-                                                                                                    `50%` = ~ median(.x, na.rm = TRUE),
-                                                                                                    `75%` = ~ quantile(.x, 0.75, na.rm = TRUE),
-                                                                                                    max = ~ max(.x, na.rm = TRUE))))
-    # Guardar estadísticas en el archivo Excel
-    addWorksheet(wb_liga, paste0("Resumen_", liga))
-    writeData(wb_liga, paste0("Resumen_", liga), summary_stats)
-    
-    cat("Estadísticas para la liga", liga, "exportadas correctamente.\n")
-  } else {
-    cat("No hay suficientes datos para la liga:", liga, "\n")
-  }
-}
 
-# Guardar el archivo Excel en la carpeta Descriptivos
-saveWorkbook(wb_liga, file = file.path(ruta_descriptivos, "Resultados_Analisis_Ligas.xlsx"), overwrite = TRUE)
-cat("Resultados del análisis por liga exportados correctamente a Excel en la carpeta Descriptivos.\n")
 
-# Generar Boxplots comparando ligas simultáneamente para cada variable
-for (var in variables_numericas_preseleccion) {
-  p <- ggplot(datos_filtrados_mas_de_50, aes(x = League, y = .data[[var]], fill = League)) +
-    geom_boxplot() +
-    labs(title = paste("Boxplot de", var, "por liga"), x = "Liga", y = var) +
-    theme_minimal() +
-    theme(legend.position = "none")  # Opcional, para eliminar la leyenda
-  
-  # Guardar el gráfico en la carpeta de gráficos
-  ggsave(filename = file.path(ruta_graficos, paste0("Boxplot_comparacion_por_liga", var, ".png")), 
-         plot = p, width = 10, height = 6)
-  
-  cat("Boxplot comparativo para", var, "exportado correctamente.\n")
-}
+
+######
+######
+######
+######
+######
+######
+######
+######
+######
 
 
 
