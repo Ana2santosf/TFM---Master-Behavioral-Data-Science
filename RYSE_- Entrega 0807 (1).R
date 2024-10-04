@@ -1371,316 +1371,252 @@ for (var in variables_numericas_preseleccion) {
 }
 
 
+# #### EJEMPLO DE MODELO DE EFECTOS MIXTOS (DAVID) #### 
 
-
-
-
-
-
-
-########
-########
-########
-#######
-########
-#######
-#######
-#######
-#######
-###################################### VER DE AQUI PARA ABAJO
-
-# # 6.2.2. CLUSTERING CON VALORES RELATIVOS DE CAMBIO POR TRIMESTRE (porcentajes)
-
-# # Calcular el cambio porcentual de oro acumulado por trimestre para cada jugador
-# goldEarned_per_quarter <- goldEarned_per_quarter %>%
-#   group_by(summonerName) %>%
-#   arrange(quarter) %>%
-#   mutate(percent_change_gold = (goldEarned_total - lag(goldEarned_total)) / lag(goldEarned_total) * 100) %>%
-#   replace_na(list(percent_change_gold = 0)) %>%
-#   ungroup()
 # 
-# # Verificar los primeros y últimos valores de los cambios porcentuales
-# head(goldEarned_per_quarter %>% select(summonerName, quarter, goldEarned_total, percent_change_gold))
-# tail(goldEarned_per_quarter %>% select(summonerName, quarter, goldEarned_total, percent_change_gold))
+# # Paquetes necesarios para la modelización
+# library(nlme)
+# library(lme4)
+# library(stargazer)
+# library(emmeans)
+# library(kableExtra)
+# # Carga de datos
+# BD.kml_utility <- readxl::read_xlsx('Modelizacion/Clustering_oro_por_minuto_UTILITY.xlsx')
+# 
+# # Reestructura datos
+# tempdat <- BD.kml_utility %>% 
+#   select(summonerName,paste('quarter_',1:4,sep=''),clusters_2) %>% 
+#   gather(Quarter,measure,-c(summonerName,clusters_2)) %>%
+#   mutate(Register=str_split(Quarter,'_') %>% map_chr(.,2) %>% as.numeric()) %>% 
+#   select(summonerName,measure,Register,clusters_2) %>% arrange(summonerName)
+# 
+# #Paso 1: Modelo sobreespecificado distintas estructuras aleatorias...
+# 
+# mod.A0 <- gls(measure~1+poly(Register,2,raw=TRUE)*clusters_2,data=tempdat,
+#              method='REML',na.action=na.exclude)
+# 
+# mod.B0 <- lme(fixed=measure~1+poly(Register,2,raw=TRUE)*clusters_2,random=~1|summonerName,
+#              data=tempdat,na.action=na.exclude,control=list('optim'))
+# 
+# mod.C0 <- lme(fixed=measure~1+poly(Register,2,raw=TRUE)*clusters_2,random=~Register|summonerName,
+#              data=tempdat,na.action=na.exclude,control=list('optim'))
+# 
+# mod.D0 <- lme(fixed=measure~1+poly(Register,2,raw=TRUE)*clusters_2,random=~poly(Register,2,raw=TRUE)|summonerName,
+#              data=tempdat,na.action=na.exclude,control=list('optim')) # No converge
+# 
+# # Paso 2: Estructura óptima de la parte aleatoria del modelo
+# AIC(mod.A0)
+# AIC(mod.B0) # Fittest one
+# AIC(mod.C0)
+# 
+# # Paso 3: Estructura óptima de la parte fija del modelo
+# 
+# mod.A <- gls(measure~1,data=tempdat,method='ML',
+#              na.action=na.exclude,control=list('optim'))
+# mod.B <- gls(measure~1+Register,data=tempdat,method='ML',
+#              na.action=na.exclude,control=list('optim'))
+# mod.C <- gls(measure~1+poly(Register,2,raw=TRUE),data=tempdat,,method='ML',
+#              na.action=na.exclude,control=list('optim'))
+# mod.D <- gls(measure~1+poly(Register,2,raw=TRUE)+clusters_2,data=tempdat,method='ML',
+#                       na.action=na.exclude,control=list('optim'))
+# mod.E <- gls(measure~1+poly(Register,2,raw=TRUE)*clusters_2,data=tempdat,method='ML',
+#                       na.action=na.exclude,control=list('optim'))
+# anova(mod.A,mod.B,mod.C,mod.D,mod.E)
+# 
+# #Model df      AIC      BIC    logLik   Test  L.Ratio p-value
+# #mod.A     1  2 5654.727 5662.431 -2825.363                        
+# #mod.B     2  3 5649.912 5661.469 -2821.956 1 vs 2   6.8149  0.0090
+# #mod.C     3  4 5651.292 5666.701 -2821.646 2 vs 3   0.6204  0.4309
+# #mod.D     4  5 5326.718 5345.979 -2658.359 3 vs 4 326.5734  <.0001
+# #mod.E     5  7 5330.326 5357.292 -2658.163 4 vs 5   0.3922  0.8219
+# # Model D es el que mejor ajusta
+# 
+# # Paso 4: Añadiendo heterocedasticidad debida al clúster
+# 
+# vfopt <- varIdent(form=~1|clusters_2)
+# 
+# mod.D2 <- gls(measure~1+poly(Register,2,raw=TRUE)+clusters_2,data=tempdat,method='ML',
+#               weights=vfopt,na.action=na.exclude,control=list('optim'))
+# 
+# anova(mod.D,mod.D2)
+# # Mejor modelo mod.D2 
+# 
+# # MODEL=S A2 (Nulo) B2 (lineal + clusters) C2(interacción lineal * clusters)  mod.D2 (cuadrático + clusters) mod.E2(interacción cuadrático*clusters)
+# 
+# mod.A2 <- lme(fixed=measure~1,random=~1|summonerName,data=tempdat,
+#               weights=vfopt,na.action=na.exclude,control=list('optim'))
+# 
+# attr(mod.A2$coefficients$fixed,"names") <- c('A')
+# attr(mod.A2$varFix,"dimnames")<-list(c('A'),c('A'))
+# 
+# mod.B2 <- lme(fixed=measure~1+Register+clusters_2,random=~1|summonerName,data=tempdat,
+#               weights=vfopt,na.action=na.exclude,control=list('optim'))
+# 
+# attr(mod.B2$coefficients$fixed,"names") <- c('A','B','C')
+# attr(mod.B2$varFix,"dimnames")<-list(c('A','B','C'),c('A','B','C'))
+# 
+# mod.C2 <- lme(fixed=measure~1+Register*clusters_2,random=~1|summonerName,data=tempdat,
+#               weights=vfopt,na.action=na.exclude,control=list('optim'))
+# 
+# attr(mod.C2$coefficients$fixed,"names") <- c('A','B','C','D')
+# attr(mod.C2$varFix,"dimnames")<-list(c('A','B','C','D'),c('A','B','C','D'))
+# 
+# mod.D2 <- lme(fixed=measure~1+poly(Register,2,raw=TRUE)+clusters_2,random=~1|summonerName,data=tempdat,
+#               weights=vfopt,na.action=na.exclude,control=list('optim'))
+# 
+# attr(mod.D2$coefficients$fixed,"names") <- c('A','B','E','C')
+# attr(mod.D2$varFix,"dimnames")<-list(c('A','B','E','C'),c('A','B','E','C'))
+# 
+# mod.E2 <- lme(fixed=measure~1+poly(Register,2,raw=TRUE)*clusters_2,random=~1|summonerName,data=tempdat,
+#               weights=vfopt,na.action=na.exclude,control=list('optim'))
+# 
+# attr(mod.E2$coefficients$fixed,"names") <- c('A','B','E','C','D','F')
+# attr(mod.E2$varFix,"dimnames")<-list(c('A','B','E','C','D','F'),c('A','B','E','C','D','F'))
 # 
 # 
-# # Reemplazar valores NA generados en el primer trimestre (porque no tienen un trimestre anterior) con 0
-# goldEarned_per_quarter$percent_change_gold[is.na(goldEarned_per_quarter$percent_change_gold)] <- 0
 # 
-# # Visualizar el cambio porcentual de oro acumulado para un subconjunto de jugadores
-# subconjunto_jugadores <- sample(unique(goldEarned_per_quarter$summonerName), 10)
-# goldEarned_percent_change_subconjunto <- goldEarned_per_quarter %>%
-#   filter(summonerName %in% subconjunto_jugadores)
+# # Tabla resumen de los modelos de efectos aleatorios estimados
 # 
-# ggplot(goldEarned_percent_change_subconjunto, aes(x = quarter, y = percent_change_gold, color = summonerName, group = summonerName)) +
+# stargazer(mod.A2, mod.B2,mod.C2,mod.D2, mod.E2, type='html', title= 'Models summary for Amotivation. All models include random intercepts as well as heteroskedasticity due to clusters. Model (1): Null mixed model; Model (2): Mixed model with main effects (linear); Model (3): Mixed model with main and interaction effects (linear); Model (4): Mixed model with main effects (quadratic); Model (5): Mixed model with main and interaction effects (quadratic).', align=TRUE,column.labels = c("Model (1)","Model (2)","Model (3)","Model (4)",'Model (5)'),model.numbers = FALSE,model.names=FALSE,dep.var.labels.include = FALSE,font.size='footnotesize',table.placement = 'H',star.cutoffs = c(.05,.01,.001),
+#           dep.var.caption='Response: Amotivation',covariate.labels=c("Intercept","Register (linear)","Register (quadratic)","Cluster B","Register x Cluster B (linear)","Register x Cluster B (quadratic)"))
+# 
+# 
+# 
+# # Gráfico de medias marginales para el modelo que mejor ajusta D2: crecimiento cuadrático más clusters
+# 
+# ls.tabla <- data.frame(summary(lsmeans(mod.D2, pairwise~clusters_2*Register,at=list(Register=c(1,2,3,4)),
+#                                        data=tempdat,params=list(weights=vfopt),adjust="tukey"))$lsmeans[c('Register','clusters_2',
+#                                                                                                           'lsmean','lower.CL','upper.CL')])
+# 
+# pa <- ggplot(ls.tabla, aes(x=Register, y=lsmean, linetype=clusters_2)) + 
+#   geom_errorbar(aes(ymin = lower.CL, ymax = upper.CL),
+#                 width = 0.2) +
 #   geom_line() +
-#   labs(title = "Cambio porcentual de oro acumulado por trimestre para jugadores seleccionados",
-#        x = "Quarter",
-#        y = "Cambio porcentual de oro (%)") +
-#   theme_minimal()
+#   geom_point(aes(y = lsmean), size = 3, 
+#              shape = 21, fill = "white") +
+#   labs(x = "Quarter", y = bquote("Mean" %+-% "2SE"),
+#        title = "Gold Earned",linetype='Group') +
+#   theme_bw() +
+#   scale_x_continuous(breaks=c(1,2,3,4),
+#                      labels=c("Q1", "Q2", "Q3","Q4"))
 # 
-
-
-
-
-
-
-
- 
-# #### EJEMPLO DE CLUSTERING (DAVID) #### 
+# pa
 # 
-# # Wide format para que pueda operar el paquete kml3d
-# BD.kml <- goldEarned_per_quarter %>%  
-#   select(summonerName, quarter, goldEarned_cumulative) %>%
-#   gather(variable, value, -(summonerName:quarter)) %>%
-#   unite(temp,variable,quarter) %>% 
-#   spread(temp, value)
+# # Contrastes múltiples (utilizad kableExtra) entre grupos por trimestre (como no hay interacción los resultados son iguales)
 # 
-# # Crear objeto para los clusterings longitudinales y base de datos resultante
-# cldGE <- cld3d(data.frame(BD.kml),timeInData= list(goldearned=2:5))
-# kml3d(cldGE,nbRedrawing=50) # Guarda las trayectorias en cldGE
+# lsmeans(mod.D2,pairwise~clusters_2|Register,at=list(Register=c(1,2,3,4)),
+#         data=tempdat,params=list(weights=vfopt),adjust="tukey")->contrastes
 # 
-# # Estudiar performance de las distintas soluciones según nº de particiones
-# load('cldGE.Rdata')
+# contrastes$contrasts %>% kable(type='response') %>% kable_styling()
 # 
-# listPart <- listPartition()
-# listPart['criterionActif'] <-CRITERION_NAMES[1]
-# for(i in 2:5){
-#   listPart["add"] <- partition(getClusters(cldGE, i),cldGE)
-#   ordered(listPart)
+# # Contrastes múltiples entre trimestres por grupo (como no hay interacción los resultados son iguales)
+# 
+# lsmeans(mod.D2,pairwise~Register|clusters_2,at=list(Register=c(1,2,3,4)),
+#         data=tempdat,params=list(weights=vfopt),adjust="tukey")->contrastes
+# 
+# contrastes$contrasts %>% kable(type='response') %>% kable_styling()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# 
+# # 6.4.REGRESIONES
+# 
+# # Crear un libro de trabajo para los resultados de regresiones
+# wb_regresion <- createWorkbook()
+# 
+# # 6.4.1. REGRESIONES POR POSICIÓN
+# 
+# # Crear modelo de regresión para cada posición
+# for (position in unique(datos_filtrados_mas_de_50$teamPosition)) {
+#   cat("\nModelo de regresión para la posición:", position, "\n")
+#   
+#   datos_posicion <- datos_filtrados_mas_de_50 %>% filter(teamPosition == position)
+#   
+#   if (nrow(datos_posicion) > 0) {
+#     # Regresión múltiple
+#     modelo <- lm(goldEarned ~ kills + deaths + assists + champExperience + totalDamageDealt + totalDamageTaken, data = datos_posicion)
+#     
+#     summary_modelo <- summary(modelo)
+#     addWorksheet(wb_regresion, paste0("Regresion_", position))
+#     writeData(wb_regresion, paste0("Regresion_", position), as.data.frame(summary_modelo$coefficients))
+#     
+#     # Visualización de los residuos del modelo
+#     png(filename = file.path(ruta_graficos, paste0("Residuos_Modelo_Posicion_", gsub("/", "_", position), ".png")))
+#     par(mfrow = c(2, 2))
+#     plot(modelo)
+#     dev.off()
+#     cat("Gráficos de residuos para la posición", position, "exportados correctamente a la carpeta graficos.\n")
+#   } else {
+#     cat("No hay suficientes datos para la posición:", position, "\n")
+#   }
 # }
 # 
-# plotAllCriterion(listPart) # Parece que en 3 de 5 criterios 2 particiones es mejor...
 # 
-# # Cómo guardar pertenencia al cluster según solución escogida como óptima
-# BD.kml$clusters <- getClusters(cldGE, 5)
- 
-
-# #### EJEMPLO DE MODELO DE EFECTOS MIXTOS (DAVID) #### 
+# # 6.4.2. REGRESIONES POR LIGAS
+# # Crear modelo de regresión para cada liga
+# for (liga in unique(datos_filtrados_mas_de_50$League)) {
+#   cat("\nModelo de regresión para la liga:", liga, "\n")
+#   
+#   datos_liga <- datos_filtrados_mas_de_50 %>% filter(League == liga)
+#   
+#   if (nrow(datos_liga) > 0) {
+#     # Regresión múltiple
+#     modelo <- lm(goldEarned ~ kills + deaths + assists + champExperience + totalDamageDealt + totalDamageTaken, data = datos_liga)
+#     
+#     summary_modelo <- summary(modelo)
+#     addWorksheet(wb_regresion, paste0("Regresion_", liga))
+#     writeData(wb_regresion, paste0("Regresion_", liga), as.data.frame(summary_modelo$coefficients))
+#     
+#     # Visualización de los residuos del modelo
+#     png(filename = file.path(ruta_graficos, paste0("Residuos_Modelo_Liga_", gsub("/", "_", liga), ".png")))
+#     par(mfrow = c(2, 2))
+#     plot(modelo)
+#     dev.off()
+#     cat("Gráficos de residuos para la liga", liga, "exportados correctamente a la carpeta graficos.\n")
+#   } else {
+#     cat("No hay suficientes datos para la liga:", liga, "\n")
+#   }
+# }
 # 
-# Paquetes necesarios para la modelización
-library(nlme)
-library(lme4)
-library(stargazer)
-library(emmeans)
-library(kableExtra)
-# Carga de datos
-BD.kml_utility <- readxl::read_xlsx('Modelizacion/Clustering_oro_por_minuto_UTILITY.xlsx')
-
-# Reestructura datos
-tempdat <- BD.kml_utility %>% 
-  select(summonerName,paste('quarter_',1:4,sep=''),clusters_2) %>% 
-  gather(Quarter,measure,-c(summonerName,clusters_2)) %>%
-  mutate(Register=str_split(Quarter,'_') %>% map_chr(.,2) %>% as.numeric()) %>% 
-  select(summonerName,measure,Register,clusters_2) %>% arrange(summonerName)
-
-#Paso 1: Modelo sobreespecificado distintas estructuras aleatorias...
-
-mod.A0 <- gls(measure~1+poly(Register,2,raw=TRUE)*clusters_2,data=tempdat,
-             method='REML',na.action=na.exclude)
-
-mod.B0 <- lme(fixed=measure~1+poly(Register,2,raw=TRUE)*clusters_2,random=~1|summonerName,
-             data=tempdat,na.action=na.exclude,control=list('optim'))
-
-mod.C0 <- lme(fixed=measure~1+poly(Register,2,raw=TRUE)*clusters_2,random=~Register|summonerName,
-             data=tempdat,na.action=na.exclude,control=list('optim'))
-
-mod.D0 <- lme(fixed=measure~1+poly(Register,2,raw=TRUE)*clusters_2,random=~poly(Register,2,raw=TRUE)|summonerName,
-             data=tempdat,na.action=na.exclude,control=list('optim')) # No converge
-
-# Paso 2: Estructura óptima de la parte aleatoria del modelo
-AIC(mod.A0)
-AIC(mod.B0) # Fittest one
-AIC(mod.C0)
-
-# Paso 3: Estructura óptima de la parte fija del modelo
-
-mod.A <- gls(measure~1,data=tempdat,method='ML',
-             na.action=na.exclude,control=list('optim'))
-mod.B <- gls(measure~1+Register,data=tempdat,method='ML',
-             na.action=na.exclude,control=list('optim'))
-mod.C <- gls(measure~1+poly(Register,2,raw=TRUE),data=tempdat,,method='ML',
-             na.action=na.exclude,control=list('optim'))
-mod.D <- gls(measure~1+poly(Register,2,raw=TRUE)+clusters_2,data=tempdat,method='ML',
-                      na.action=na.exclude,control=list('optim'))
-mod.E <- gls(measure~1+poly(Register,2,raw=TRUE)*clusters_2,data=tempdat,method='ML',
-                      na.action=na.exclude,control=list('optim'))
-anova(mod.A,mod.B,mod.C,mod.D,mod.E)
-
-#Model df      AIC      BIC    logLik   Test  L.Ratio p-value
-#mod.A     1  2 5654.727 5662.431 -2825.363                        
-#mod.B     2  3 5649.912 5661.469 -2821.956 1 vs 2   6.8149  0.0090
-#mod.C     3  4 5651.292 5666.701 -2821.646 2 vs 3   0.6204  0.4309
-#mod.D     4  5 5326.718 5345.979 -2658.359 3 vs 4 326.5734  <.0001
-#mod.E     5  7 5330.326 5357.292 -2658.163 4 vs 5   0.3922  0.8219
-# Model D es el que mejor ajusta
-
-# Paso 4: Añadiendo heterocedasticidad debida al clúster
-
-vfopt <- varIdent(form=~1|clusters_2)
-
-mod.D2 <- gls(measure~1+poly(Register,2,raw=TRUE)+clusters_2,data=tempdat,method='ML',
-              weights=vfopt,na.action=na.exclude,control=list('optim'))
-
-anova(mod.D,mod.D2)
-# Mejor modelo mod.D2 
-
-# MODEL=S A2 (Nulo) B2 (lineal + clusters) C2(interacción lineal * clusters)  mod.D2 (cuadrático + clusters) mod.E2(interacción cuadrático*clusters)
-
-mod.A2 <- lme(fixed=measure~1,random=~1|summonerName,data=tempdat,
-              weights=vfopt,na.action=na.exclude,control=list('optim'))
-
-attr(mod.A2$coefficients$fixed,"names") <- c('A')
-attr(mod.A2$varFix,"dimnames")<-list(c('A'),c('A'))
-
-mod.B2 <- lme(fixed=measure~1+Register+clusters_2,random=~1|summonerName,data=tempdat,
-              weights=vfopt,na.action=na.exclude,control=list('optim'))
-
-attr(mod.B2$coefficients$fixed,"names") <- c('A','B','C')
-attr(mod.B2$varFix,"dimnames")<-list(c('A','B','C'),c('A','B','C'))
-
-mod.C2 <- lme(fixed=measure~1+Register*clusters_2,random=~1|summonerName,data=tempdat,
-              weights=vfopt,na.action=na.exclude,control=list('optim'))
-
-attr(mod.C2$coefficients$fixed,"names") <- c('A','B','C','D')
-attr(mod.C2$varFix,"dimnames")<-list(c('A','B','C','D'),c('A','B','C','D'))
-
-mod.D2 <- lme(fixed=measure~1+poly(Register,2,raw=TRUE)+clusters_2,random=~1|summonerName,data=tempdat,
-              weights=vfopt,na.action=na.exclude,control=list('optim'))
-
-attr(mod.D2$coefficients$fixed,"names") <- c('A','B','E','C')
-attr(mod.D2$varFix,"dimnames")<-list(c('A','B','E','C'),c('A','B','E','C'))
-
-mod.E2 <- lme(fixed=measure~1+poly(Register,2,raw=TRUE)*clusters_2,random=~1|summonerName,data=tempdat,
-              weights=vfopt,na.action=na.exclude,control=list('optim'))
-
-attr(mod.E2$coefficients$fixed,"names") <- c('A','B','E','C','D','F')
-attr(mod.E2$varFix,"dimnames")<-list(c('A','B','E','C','D','F'),c('A','B','E','C','D','F'))
-
-
-
-# Tabla resumen de los modelos de efectos aleatorios estimados
-
-stargazer(mod.A2, mod.B2,mod.C2,mod.D2, mod.E2, type='html', title= 'Models summary for Amotivation. All models include random intercepts as well as heteroskedasticity due to clusters. Model (1): Null mixed model; Model (2): Mixed model with main effects (linear); Model (3): Mixed model with main and interaction effects (linear); Model (4): Mixed model with main effects (quadratic); Model (5): Mixed model with main and interaction effects (quadratic).', align=TRUE,column.labels = c("Model (1)","Model (2)","Model (3)","Model (4)",'Model (5)'),model.numbers = FALSE,model.names=FALSE,dep.var.labels.include = FALSE,font.size='footnotesize',table.placement = 'H',star.cutoffs = c(.05,.01,.001),
-          dep.var.caption='Response: Amotivation',covariate.labels=c("Intercept","Register (linear)","Register (quadratic)","Cluster B","Register x Cluster B (linear)","Register x Cluster B (quadratic)"))
-
-
-
-# Gráfico de medias marginales para el modelo que mejor ajusta D2: crecimiento cuadrático más clusters
-
-ls.tabla <- data.frame(summary(lsmeans(mod.D2, pairwise~clusters_2*Register,at=list(Register=c(1,2,3,4)),
-                                       data=tempdat,params=list(weights=vfopt),adjust="tukey"))$lsmeans[c('Register','clusters_2',
-                                                                                                          'lsmean','lower.CL','upper.CL')])
-
-pa <- ggplot(ls.tabla, aes(x=Register, y=lsmean, linetype=clusters_2)) + 
-  geom_errorbar(aes(ymin = lower.CL, ymax = upper.CL),
-                width = 0.2) +
-  geom_line() +
-  geom_point(aes(y = lsmean), size = 3, 
-             shape = 21, fill = "white") +
-  labs(x = "Quarter", y = bquote("Mean" %+-% "2SE"),
-       title = "Gold Earned",linetype='Group') +
-  theme_bw() +
-  scale_x_continuous(breaks=c(1,2,3,4),
-                     labels=c("Q1", "Q2", "Q3","Q4"))
-
-pa
-
-# Contrastes múltiples (utilizad kableExtra) entre grupos por trimestre (como no hay interacción los resultados son iguales)
-
-lsmeans(mod.D2,pairwise~clusters_2|Register,at=list(Register=c(1,2,3,4)),
-        data=tempdat,params=list(weights=vfopt),adjust="tukey")->contrastes
-
-contrastes$contrasts %>% kable(type='response') %>% kable_styling()
-
-# Contrastes múltiples entre trimestres por grupo (como no hay interacción los resultados son iguales)
-
-lsmeans(mod.D2,pairwise~Register|clusters_2,at=list(Register=c(1,2,3,4)),
-        data=tempdat,params=list(weights=vfopt),adjust="tukey")->contrastes
-
-contrastes$contrasts %>% kable(type='response') %>% kable_styling()
-
-
-
-
-
-
-
-
-######
-######
-######
-######
-######
-######
-######
-######
-######
-
-
-
-# 6.4.REGRESIONES
-
-# Crear un libro de trabajo para los resultados de regresiones
-wb_regresion <- createWorkbook()
-
-# 6.4.1. REGRESIONES POR POSICIÓN
-
-# Crear modelo de regresión para cada posición
-for (position in unique(datos_filtrados_mas_de_50$teamPosition)) {
-  cat("\nModelo de regresión para la posición:", position, "\n")
-  
-  datos_posicion <- datos_filtrados_mas_de_50 %>% filter(teamPosition == position)
-  
-  if (nrow(datos_posicion) > 0) {
-    # Regresión múltiple
-    modelo <- lm(goldEarned ~ kills + deaths + assists + champExperience + totalDamageDealt + totalDamageTaken, data = datos_posicion)
-    
-    summary_modelo <- summary(modelo)
-    addWorksheet(wb_regresion, paste0("Regresion_", position))
-    writeData(wb_regresion, paste0("Regresion_", position), as.data.frame(summary_modelo$coefficients))
-    
-    # Visualización de los residuos del modelo
-    png(filename = file.path(ruta_graficos, paste0("Residuos_Modelo_Posicion_", gsub("/", "_", position), ".png")))
-    par(mfrow = c(2, 2))
-    plot(modelo)
-    dev.off()
-    cat("Gráficos de residuos para la posición", position, "exportados correctamente a la carpeta graficos.\n")
-  } else {
-    cat("No hay suficientes datos para la posición:", position, "\n")
-  }
-}
-
-
-# 6.4.2. REGRESIONES POR LIGAS
-# Crear modelo de regresión para cada liga
-for (liga in unique(datos_filtrados_mas_de_50$League)) {
-  cat("\nModelo de regresión para la liga:", liga, "\n")
-  
-  datos_liga <- datos_filtrados_mas_de_50 %>% filter(League == liga)
-  
-  if (nrow(datos_liga) > 0) {
-    # Regresión múltiple
-    modelo <- lm(goldEarned ~ kills + deaths + assists + champExperience + totalDamageDealt + totalDamageTaken, data = datos_liga)
-    
-    summary_modelo <- summary(modelo)
-    addWorksheet(wb_regresion, paste0("Regresion_", liga))
-    writeData(wb_regresion, paste0("Regresion_", liga), as.data.frame(summary_modelo$coefficients))
-    
-    # Visualización de los residuos del modelo
-    png(filename = file.path(ruta_graficos, paste0("Residuos_Modelo_Liga_", gsub("/", "_", liga), ".png")))
-    par(mfrow = c(2, 2))
-    plot(modelo)
-    dev.off()
-    cat("Gráficos de residuos para la liga", liga, "exportados correctamente a la carpeta graficos.\n")
-  } else {
-    cat("No hay suficientes datos para la liga:", liga, "\n")
-  }
-}
-
-#Guardar el archivo Excel en la ruta modelizacion
-saveWorkbook(wb_regresion, file = file.path(ruta_modelizacion, "Resultados_Regresiones_posicion_y_ligas.xlsx"), overwrite = TRUE)
-cat("Resultados de las regresiones exportados correctamente a Excel en la carpeta modelizacion.\n")
+# #Guardar el archivo Excel en la ruta modelizacion
+# saveWorkbook(wb_regresion, file = file.path(ruta_modelizacion, "Resultados_Regresiones_posicion_y_ligas.xlsx"), overwrite = TRUE)
+# cat("Resultados de las regresiones exportados correctamente a Excel en la carpeta modelizacion.\n")
 
 
 
