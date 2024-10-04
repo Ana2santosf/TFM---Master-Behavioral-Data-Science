@@ -563,6 +563,19 @@ ggplot(kills_por_win_loss, aes(x = teamPosition, y = mean_kills, fill = win)) +
   geom_bar(stat = "identity", position = "dodge") +
   labs(title = "Comparación de kills por rol entre partidas ganadas y perdidas")
 
+# ASSISTS
+
+# Filtrar por partidas ganadas y perdidas y calcular la media de assists
+assists_por_win_loss <- datos_agrupados_finales %>%
+  group_by(win, teamPosition) %>%
+  summarise(mean_assists = mean(assists.mean, na.rm = TRUE))
+
+# Visualización
+ggplot(assists_por_win_loss, aes(x = teamPosition, y = mean_assists, fill = win)) + 
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(title = "Comparación de assists por rol entre partidas ganadas y perdidas")
+
+
 
 
 
