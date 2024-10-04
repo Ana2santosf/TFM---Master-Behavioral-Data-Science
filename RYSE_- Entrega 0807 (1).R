@@ -547,6 +547,25 @@ ggsave(filename = file.path(ruta_correlacion, "Matriz_de_Correlacion.png"), plot
 print(cor_matrix)
 
 
+## CONJETURAS - RESULTADOS DE ANALISIS NUMERICOS:
+
+# KILLS
+
+# Filtrar por partidas ganadas y perdidas
+kills_por_win_loss <- datos_agrupados_finales %>%
+  group_by(win, teamPosition) %>%
+  summarise(mean_kills = mean(kills.mean, na.rm = TRUE))
+
+print(kills_por_win_loss)
+
+# Visualización
+ggplot(kills_por_win_loss, aes(x = teamPosition, y = mean_kills, fill = win)) + 
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(title = "Comparación de kills por rol entre partidas ganadas y perdidas")
+
+
+
+
 
 
 # SECCION 6: ANÁLISIS AVANZADOS
