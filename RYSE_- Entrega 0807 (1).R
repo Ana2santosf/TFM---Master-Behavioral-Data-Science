@@ -37,6 +37,7 @@ ruta_anova_posthoc <- file.path(ruta_modelizacion, "ANOVA_PostHoc")
 ruta_informe <- file.path(ruta, "Informe")
 ruta_graficos <- file.path(ruta, "Graficos")
 
+
 # Crear subcarpetas específicas dentro de la carpeta Graficos
 ruta_boxplots_ligas <- file.path(ruta_graficos, "Boxplots_Ligas")
 ruta_histogramas <- file.path(ruta_graficos, "Histogramas")
@@ -49,9 +50,6 @@ ruta_pca <- file.path(ruta_graficos, "PCA")
 ruta_correlacion <- file.path(ruta_graficos, "Correlacion")
 ruta_graficos_modelos_mixtos <- file.path(ruta_graficos, "Modelos_Mixtos")
 ruta_graficos_adicionales <- file.path(ruta_graficos, "Graficos adicionales")
-
-
-
 
 
 # Crear las carpetas si no existen
@@ -580,7 +578,7 @@ assists_por_win_loss <- datos_agrupados_finales %>%
   summarise(mean_assists = mean(assists.mean, na.rm = TRUE))
 
 # Visualización
-ggplot(assists_por_win_loss, aes(x = teamPosition, y = mean_assists, fill = win)) + 
+p_assists <-  ggplot(assists_por_win_loss, aes(x = teamPosition, y = mean_assists, fill = win)) + 
   geom_bar(stat = "identity", position = "dodge") +
   labs(title = "Comparación de assists por rol entre partidas ganadas y perdidas")
 
@@ -597,14 +595,16 @@ minions_por_win_loss <- datos_agrupados_finales %>%
   summarise(mean_minions = mean(totalMinionsKilled.mean, na.rm = TRUE))
 
 # Visualización
-ggplot(minions_por_win_loss, aes(x = teamPosition, y = mean_minions, fill = win)) + 
+p_minions_por_win_loss <- ggplot(minions_por_win_loss, aes(x = teamPosition, y = mean_minions, fill = win)) + 
   geom_bar(stat = "identity", position = "dodge") +
-  labs(title = "Comparación de súbditos asesinados por rol entre partidas ganadas y perdidas")
-
+  labs(title = "Comparación de súbditos asesinados por rol entre partidas ganadas y perdidas", 
+       x = "Rol", 
+       y = "Promedio de súbditos asesinados") 
+  
 
 # Guardar el gráfico
 ggsave(filename = file.path(ruta_graficos_adicionales, "Minions_por_rol_ganadas_perdidas.png"), 
-       plot = p_minions, device = "png", width = 8, height = 6)
+       plot = p_minions_por_win_loss, device = "png", width = 8, height = 6)
 
 # Calcular la correlación entre totalMinionsKilled y otras variables clave
 correlaciones_minions <- datos_agrupados_finales %>%
@@ -636,6 +636,17 @@ ggsave(filename = file.path(ruta_correlacion, "Matriz_Correlacion_Minions_Adapta
 
 # Clustering totalMinions
 
+# Realizar clustering en base a la variable 'totalMinionsKilled.mean'
+set.seed(123)
+kmeans_result <- kmeans(datos_agrupados_finales$totalMinionsKilled.mean, centers = 3)
+
+# Añadir los clusters al dataset
+datos_agrupados_finales$cluster_minions <- as.factor(kmeans_result$cluster)
+
+# Verificar si la columna se ha añadido correctamente
+head(datos_agrupados_finales$cluster_minions)
+
+
 p_cluster_1 <- ggplot(datos_agrupados_finales, aes(x = factor(cluster_minions), y = totalMinionsKilled.mean)) +
   geom_boxplot() +
   labs(title = "Clustering basado en totalMinionsKilled", x = "Cluster", y = "Súbditos Asesinados (Promedio)") +
@@ -654,6 +665,9 @@ p_cluster_2 <- ggplot(datos_agrupados_finales, aes(x = teamPosition, y = totalMi
 # Guardar el gráfico de clustering 2
 ggsave(filename = file.path(ruta_graficos_adicionales, "Distribucion_Minions_Posicion_Cluster.png"), 
        plot = p_cluster_2, device = "png", width = 8, height = 6)
+
+
+
 
 # SECCION 6: ANÁLISIS AVANZADOS
 
