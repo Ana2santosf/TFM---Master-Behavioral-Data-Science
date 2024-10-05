@@ -19,7 +19,7 @@ install_and_load <- function(package) {
 }
 
 # Lista de liberias necesarias
-libraries <- c("tidyverse", "GGally", "caret", "plm", "ggplot2", "readxl", "openxlsx", "psych", "pls", "here", "kml3d", "gridExtra", "dyplr",  "nlme", "lme4", "stargazer", "emmeans", "kableExtra", "purrr")
+libraries <- c("tidyverse", "GGally", "caret", "plm", "ggplot2", "readxl", "openxlsx", "psych", "pls", "here", "kml3d", "gridExtra", "dyplr",  "nlme", "lme4", "stargazer", "emmeans", "kableExtra", "purrr", "reshape2")
 
 # Ejecutar la función para cada libreria en la lista
 lapply(libraries, install_and_load)
@@ -576,8 +576,58 @@ ggplot(assists_por_win_loss, aes(x = teamPosition, y = mean_assists, fill = win)
   labs(title = "Comparación de assists por rol entre partidas ganadas y perdidas")
 
 
+# TOTALMINIONSKILLED
+
+# Filtrar por partidas ganadas y perdidas para totalMinionsKilled
+minions_por_win_loss <- datos_agrupados_finales %>%
+  group_by(win, teamPosition) %>%
+  summarise(mean_minions = mean(totalMinionsKilled.mean, na.rm = TRUE))
+
+# Visualización
+ggplot(minions_por_win_loss, aes(x = teamPosition, y = mean_minions, fill = win)) + 
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(title = "Comparación de súbditos asesinados por rol entre partidas ganadas y perdidas")
 
 
+# Calcular la correlación entre totalMinionsKilled y otras variables clave
+correlaciones_minions <- datos_agrupados_finales %>%
+  select(totalMinionsKilled.mean, goldEarned.mean, champExperience.mean, totalDamageDealt.mean) %>%
+  cor(use = "complete.obs")
+
+# Convertir la matriz de correlación a un formato long
+cor_matrix_long <- melt(correlaciones_minions)
+
+# Crear el gráfico con ggplot2
+p_correlacion <- ggplot(cor_matrix_long, aes(x = Var1, y = Var2, fill = value)) +
+  geom_tile(color = "white") +
+  scale_fill_gradient2(low = "blue", high = "red", mid = "white", 
+                       midpoint = 0, limit = c(-1, 1), space = "Lab", 
+                       name = "Correlación") +
+  theme_minimal() + 
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, 
+                                   size = 12, hjust = 1)) +
+  coord_fixed() +
+  geom_text(aes(Var1, Var2, label = round(value, 2)), color = "black", size = 4) +
+  labs(title = "Matriz de Correlación: Total Minions Killed y Variables Clave", x = "", y = "")
+
+# Mostrar el gráfico
+print(p_correlacion)
+
+# Guardar el gráfico en la carpeta de correlaciones
+ggsave(filename = file.path(ruta_correlacion, "Matriz_Correlacion_Minions_Adaptada.png"), plot = p_correlacion, device = "png", width = 8, height = 6)
+
+
+# Clustering totalMinions
+
+ggplot(datos_agrupados_finales, aes(x = factor(cluster_minions), y = totalMinionsKilled.mean)) +
+  geom_boxplot() +
+  labs(title = "Clustering basado en totalMinionsKilled", x = "Cluster", y = "Súbditos Asesinados (Promedio)") +
+  theme_minimal()
+
+ggplot(datos_agrupados_finales, aes(x = teamPosition, y = totalMinionsKilled.mean, fill = factor(cluster_minions))) +
+  geom_boxplot() +
+  labs(title = "Distribución de súbditos asesinados por posición y cluster", x = "Posición", y = "Súbditos Asesinados (Promedio)") +
+  theme_minimal()
 
 
 
