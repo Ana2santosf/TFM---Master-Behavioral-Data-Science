@@ -48,6 +48,7 @@ ruta_pcr <- file.path(ruta_graficos, "PCR")
 ruta_pca <- file.path(ruta_graficos, "PCA")
 ruta_correlacion <- file.path(ruta_graficos, "Correlacion")
 ruta_graficos_modelos_mixtos <- file.path(ruta_graficos, "Modelos_Mixtos")
+ruta_graficos_adicionales <- file.path(ruta_graficos, "Graficos adicionales")
 
 
 
@@ -71,6 +72,7 @@ dir.create(ruta_pcr, recursive = TRUE, showWarnings = FALSE)
 dir.create(ruta_pca, recursive = TRUE, showWarnings = FALSE)
 dir.create(ruta_correlacion, recursive = TRUE, showWarnings = FALSE)
 dir.create(ruta_graficos_modelos_mixtos, recursive = TRUE, showWarnings = FALSE)
+dir.create(ruta_graficos_adicionales, recursive = TRUE, showWarnings = FALSE)
 
 
 
@@ -548,6 +550,8 @@ ggsave(filename = file.path(ruta_correlacion, "Matriz_de_Correlacion.png"), plot
 print(cor_matrix)
 
 
+
+## ANALISIS ADICIONALES (Kills, Assists y totalMinionsKilled)
 ## CONJETURAS - RESULTADOS DE ANALISIS NUMERICOS:
 
 # KILLS
@@ -564,6 +568,10 @@ ggplot(kills_por_win_loss, aes(x = teamPosition, y = mean_kills, fill = win)) +
   geom_bar(stat = "identity", position = "dodge") +
   labs(title = "Comparación de kills por rol entre partidas ganadas y perdidas")
 
+# Guardar el gráfico de kills en la carpeta "Graficos adicionales"
+ggsave(filename = file.path(ruta_graficos_adicionales, "Kills_por_rol_ganadas_perdidas.png"), 
+       device = "png", width = 8, height = 6)
+
 # ASSISTS
 
 # Filtrar por partidas ganadas y perdidas y calcular la media de assists
@@ -575,6 +583,10 @@ assists_por_win_loss <- datos_agrupados_finales %>%
 ggplot(assists_por_win_loss, aes(x = teamPosition, y = mean_assists, fill = win)) + 
   geom_bar(stat = "identity", position = "dodge") +
   labs(title = "Comparación de assists por rol entre partidas ganadas y perdidas")
+
+# Guardar el gráfico
+ggsave(filename = file.path(ruta_graficos_adicionales, "Assists_por_rol_ganadas_perdidas.png"), 
+       plot = p_assists, device = "png", width = 8, height = 6)
 
 
 # TOTALMINIONSKILLED
@@ -589,6 +601,10 @@ ggplot(minions_por_win_loss, aes(x = teamPosition, y = mean_minions, fill = win)
   geom_bar(stat = "identity", position = "dodge") +
   labs(title = "Comparación de súbditos asesinados por rol entre partidas ganadas y perdidas")
 
+
+# Guardar el gráfico
+ggsave(filename = file.path(ruta_graficos_adicionales, "Minions_por_rol_ganadas_perdidas.png"), 
+       plot = p_minions, device = "png", width = 8, height = 6)
 
 # Calcular la correlación entre totalMinionsKilled y otras variables clave
 correlaciones_minions <- datos_agrupados_finales %>%
@@ -620,17 +636,24 @@ ggsave(filename = file.path(ruta_correlacion, "Matriz_Correlacion_Minions_Adapta
 
 # Clustering totalMinions
 
-ggplot(datos_agrupados_finales, aes(x = factor(cluster_minions), y = totalMinionsKilled.mean)) +
+p_cluster_1 <- ggplot(datos_agrupados_finales, aes(x = factor(cluster_minions), y = totalMinionsKilled.mean)) +
   geom_boxplot() +
   labs(title = "Clustering basado en totalMinionsKilled", x = "Cluster", y = "Súbditos Asesinados (Promedio)") +
   theme_minimal()
 
-ggplot(datos_agrupados_finales, aes(x = teamPosition, y = totalMinionsKilled.mean, fill = factor(cluster_minions))) +
+# Guardar el gráfico de clustering 1
+ggsave(filename = file.path(ruta_graficos_adicionales, "Clustering_MinionsK.png"), 
+       plot = p_cluster_1, device = "png", width = 8, height = 6)
+
+
+p_cluster_2 <- ggplot(datos_agrupados_finales, aes(x = teamPosition, y = totalMinionsKilled.mean, fill = factor(cluster_minions))) +
   geom_boxplot() +
   labs(title = "Distribución de súbditos asesinados por posición y cluster", x = "Posición", y = "Súbditos Asesinados (Promedio)") +
   theme_minimal()
 
-
+# Guardar el gráfico de clustering 2
+ggsave(filename = file.path(ruta_graficos_adicionales, "Distribucion_Minions_Posicion_Cluster.png"), 
+       plot = p_cluster_2, device = "png", width = 8, height = 6)
 
 # SECCION 6: ANÁLISIS AVANZADOS
 
@@ -1524,6 +1547,8 @@ for (variable in names(resultados_anova)) {
   
   # Guardar el dataframe como archivo CSV
   write.csv(resultados_df, ruta_archivo, row.names = FALSE)
+  
+}
 
 
 
