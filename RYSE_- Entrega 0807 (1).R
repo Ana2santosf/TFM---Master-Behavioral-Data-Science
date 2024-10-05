@@ -49,7 +49,7 @@ ruta_pcr <- file.path(ruta_graficos, "PCR")
 ruta_pca <- file.path(ruta_graficos, "PCA")
 ruta_correlacion <- file.path(ruta_graficos, "Correlacion")
 ruta_graficos_modelos_mixtos <- file.path(ruta_graficos, "Modelos_Mixtos")
-ruta_graficos_adicionales <- file.path(ruta_graficos, "Graficos_Adicionales")
+ruta_graficos_adicionales <- file.path(ruta_graficos, "Graficos_adicionales")
 
 
 # Crear las carpetas si no existen
@@ -72,8 +72,6 @@ dir.create(ruta_pca, recursive = TRUE, showWarnings = FALSE)
 dir.create(ruta_correlacion, recursive = TRUE, showWarnings = FALSE)
 dir.create(ruta_graficos_modelos_mixtos, recursive = TRUE, showWarnings = FALSE)
 dir.create(ruta_graficos_adicionales, recursive = TRUE, showWarnings = FALSE)
-
-
 
 
 
@@ -736,6 +734,18 @@ ggplot(pca_scores, aes(x = PC1, y = PC2)) +
   xlab("Componente Principal 1") +
   ylab("Componente Principal 2")
 
+
+# Guardar el gráfico en un archivo PNG
+ggsave(filename = file.path(ruta_pca, "PCA_Proyeccion_Comp1_Comp2.png"), 
+       plot = last_plot(),  # last_plot() guarda el último gráfico generado
+       width = 8,          # Ancho del gráfico en pulgadas
+       height = 6,         # Altura del gráfico en pulgadas
+       dpi = 300)          # Resolución del gráfico
+
+
+
+
+
 # Ver los loadings (cargas de cada variable en los componentes)
 loadings_pca_variables_preseleccionadas <- pca_variables_preseleccionadas$rotation
 print(loadings_pca_variables_preseleccionadas)
@@ -860,8 +870,8 @@ goldEarnedPerMinute_utility_sample <- goldEarnedPerMinute_per_quarter_utility %>
 filter(summonerName %in% utility_players_sample)
 
 
-#goldEarnedPerMinute_non_utility_sample <- goldEarnedPerMinute_per_quarter_non_utility %>%
- # filter(summonerName %in% non_utility_players_sample)
+goldEarnedPerMinute_non_utility_sample <- goldEarnedPerMinute_per_quarter_non_utility %>%
+ filter(summonerName %in% non_utility_players_sample)
 
 # Visualizar el rendimiento de las posiciones UTILITY (muestra)
 p <- ggplot(goldEarnedPerMinute_utility_sample, aes(x = quarter, y = goldEarnedPerMinute_total, color = summonerName, group = summonerName)) +
@@ -918,6 +928,21 @@ for (i in 2:5) {
 
 # Visualizar los criterios para diferentes números de particiones: 
 plotAllCriterion(listPart) 
+
+# Guardar el gráfico en la carpeta Clustering
+png(filename = file.path(ruta_clustering, "Criterios_Clustering.png"), 
+    width = 1000,  # Ancho en píxeles (ajustado para mayor claridad)
+    height = 600,  # Alto en píxeles
+    res = 100)     # Resolución ajustada para una mejor calidad visual
+
+# Generar el gráfico de criterios para listPart
+plotAllCriterion(listPart)
+
+# Cerrar el dispositivo gráfico
+dev.off()
+
+
+
 
 # Parece que podemos seguir dos vías:
 # Primera vía: Tres de los cinco criterios nos dicen que 2 particiones es mejor...
@@ -1006,6 +1031,18 @@ for (i in 2:5) {
 # Visualizar los criterios para diferentes números de particiones: 
 plotAllCriterion(listPart_non_utility)
 
+# Guardar el gráfico en la carpeta Clustering
+png(filename = file.path(ruta_clustering, "Criterios_Clustering_non_utility.png"), 
+    width = 1000,  # Ancho en píxeles (ajustado para mayor claridad)
+    height = 600,  # Alto en píxeles
+    res = 100)     # Resolución ajustada para una mejor calidad visual
+
+# Generar el gráfico de criterios para listPart_non_utility
+plotAllCriterion(listPart_non_utility)
+
+# Cerrar el dispositivo gráfico
+dev.off()
+
 # Asignar clusters con 2 y 5 particiones para no UTILITY
 BD.kml_non_utility$clusters_2 <- getClusters(cldGE_non_utility, 2)
 BD.kml_non_utility$clusters_5 <- getClusters(cldGE_non_utility, 5)
@@ -1050,6 +1087,16 @@ for (i in 2:5) {
 
 # Visualizar los criterios para diferentes números de particiones: 
 plotAllCriterion(listPart_utility)
+
+# Guardar el gráfico con un tamaño mayor
+png(file = file.path(ruta_clustering, "criterios_particiones_utility.png"), 
+    width = 1000, height = 600, res = 100) # Ajustamos la resolución y tamaño
+
+# Generar el gráfico
+plotAllCriterion(listPart_utility)
+
+# Cerrar el dispositivo gráfico
+dev.off()
 
 # Asignar clusters con 2 y 5 particiones para UTILITY
 BD.kml_utility$clusters_2 <- getClusters(cldGE_utility, 2)
@@ -1493,7 +1540,11 @@ for (var in variables_numericas_preseleccion) {
 
 
 
+
 # 6.5. ANÁLISIS ANOVA Y PRUEBAS POST-HOC PARA VARIABLES NUMÉRICAS POR POSICIÓN
+
+# Asegurarse de cargar los paquetes necesarios
+library(multcompView)
 
 # Realizar ANOVA, eta-squared y pruebas post-hoc para las variables preseleccionadas
 resultados_anova <- list()
@@ -1521,46 +1572,36 @@ for (variable in variables_numericas_preseleccion) {
     # Extraer el valor de eta-squared
     eta_value <- eta_sq[1, "eta.sq"]
     
-    # Prueba post-hoc de Tukey
-    tukey_posthoc <- emmeans(anova_model, pairwise ~ teamPosition)
+    # Prueba post-hoc de Tukey usando TukeyHSD
+    tukey_posthoc <- TukeyHSD(anova_model, "teamPosition")
     
-    # Generar las comparaciones post-hoc usando multcompView::cld()
-    comparison_letters <- multcomp::cld(tukey_posthoc, Letters = letters)
+    # Extraer las letras de los grupos de Tukey usando multcompView para generar las letras
+    tukey_letters <- multcompView::multcompLetters(tukey_posthoc$teamPosition[, "p adj"])$Letters
     
     # Guardar los resultados en la lista
     resultados_anova[[variable]] <- list(
       F_value = summary_anova[[1]][[1, "F value"]],
       p_value = summary_anova[[1]][[1, "Pr(>F)"]],
       eta_sq = eta_value,
-      Letter_Coding = comparison_letters
+      Letter_Coding = tukey_letters
     )
   } 
 }
 
-# Visualizar los resultados
-resultados_anova
-
-
-
 # Crear un dataframe vacío para acumular todos los resultados de ANOVA
 todos_resultados_anova <- data.frame()
 
-# Guardar los resultados de ANOVA en archivos CSV
+# Guardar los resultados de ANOVA en archivos Excel
 for (variable in names(resultados_anova)) {
   
   # Definir el nombre del archivo
   ruta_archivo <- file.path(ruta_anova_posthoc, paste0(variable, "_ANOVA_PostHoc.csv"))
   
-  
   # Crear un dataframe con los resultados del ANOVA y la codificación de letras para esta variable
   resultados_df <- data.frame(
     Variable = variable,  # Añadir la columna de la variable actual
-    teamPosition = resultados_anova[[variable]]$Letter_Coding$teamPosition,
-    emmean = resultados_anova[[variable]]$Letter_Coding$emmean,
-    SE = resultados_anova[[variable]]$Letter_Coding$SE,
-    lower.CL = resultados_anova[[variable]]$Letter_Coding$lower.CL,
-    upper.CL = resultados_anova[[variable]]$Letter_Coding$upper.CL,
-    group = resultados_anova[[variable]]$Letter_Coding$.group,
+    teamPosition = names(resultados_anova[[variable]]$Letter_Coding),
+    group = resultados_anova[[variable]]$Letter_Coding,
     F_value = resultados_anova[[variable]]$F_value,
     p_value = resultados_anova[[variable]]$p_value,
     eta_sq = resultados_anova[[variable]]$eta_sq
@@ -1572,7 +1613,6 @@ for (variable in names(resultados_anova)) {
 
 # Guardar los resultados como un archivo Excel en lugar de CSV
 write.xlsx(todos_resultados_anova, file = file.path(ruta_anova_posthoc, "Resultados_ANOVA_PostHoc_Consolidados.xlsx"), overwrite = TRUE)
-
 
 
 
