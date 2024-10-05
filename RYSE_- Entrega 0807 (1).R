@@ -49,7 +49,7 @@ ruta_pcr <- file.path(ruta_graficos, "PCR")
 ruta_pca <- file.path(ruta_graficos, "PCA")
 ruta_correlacion <- file.path(ruta_graficos, "Correlacion")
 ruta_graficos_modelos_mixtos <- file.path(ruta_graficos, "Modelos_Mixtos")
-ruta_graficos_adicionales <- file.path(ruta_graficos, "Graficos adicionales")
+ruta_graficos_adicionales <- file.path(ruta_graficos, "Graficos_Adicionales")
 
 
 # Crear las carpetas si no existen
@@ -60,6 +60,7 @@ dir.create(ruta_modelizacion, recursive = TRUE, showWarnings = FALSE)
 dir.create(ruta_anova_posthoc, recursive = TRUE, showWarnings = FALSE)
 dir.create(ruta_informe, recursive = TRUE, showWarnings = FALSE)
 dir.create(ruta_graficos, recursive = TRUE, showWarnings = FALSE)
+
 dir.create(ruta_boxplots_ligas, recursive = TRUE, showWarnings = FALSE)
 dir.create(ruta_histogramas, recursive = TRUE, showWarnings = FALSE)
 dir.create(ruta_clustering, recursive = TRUE, showWarnings = FALSE)
@@ -1540,14 +1541,20 @@ for (variable in variables_numericas_preseleccion) {
 resultados_anova
 
 
+
+# Crear un dataframe vacío para acumular todos los resultados de ANOVA
+todos_resultados_anova <- data.frame()
+
 # Guardar los resultados de ANOVA en archivos CSV
 for (variable in names(resultados_anova)) {
   
   # Definir el nombre del archivo
   ruta_archivo <- file.path(ruta_anova_posthoc, paste0(variable, "_ANOVA_PostHoc.csv"))
   
-  # Crear un dataframe con los resultados del ANOVA y la codificación de letras
+  
+  # Crear un dataframe con los resultados del ANOVA y la codificación de letras para esta variable
   resultados_df <- data.frame(
+    Variable = variable,  # Añadir la columna de la variable actual
     teamPosition = resultados_anova[[variable]]$Letter_Coding$teamPosition,
     emmean = resultados_anova[[variable]]$Letter_Coding$emmean,
     SE = resultados_anova[[variable]]$Letter_Coding$SE,
@@ -1559,10 +1566,13 @@ for (variable in names(resultados_anova)) {
     eta_sq = resultados_anova[[variable]]$eta_sq
   )
   
-  # Guardar el dataframe como archivo CSV
-  write.csv(resultados_df, ruta_archivo, row.names = FALSE)
-  
+  # Acumular los resultados en el dataframe general
+  todos_resultados_anova <- rbind(todos_resultados_anova, resultados_df)
 }
+
+# Guardar los resultados como un archivo Excel en lugar de CSV
+write.xlsx(todos_resultados_anova, file = file.path(ruta_anova_posthoc, "Resultados_ANOVA_PostHoc_Consolidados.xlsx"), overwrite = TRUE)
+
 
 
 
