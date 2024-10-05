@@ -33,6 +33,7 @@ ruta_datos <- file.path(ruta, "Datos")
 ruta_depuracion <- file.path(ruta, "Depuracion_y_creacion_de_variables")
 ruta_descriptivos <- file.path(ruta, "Descriptivos")
 ruta_modelizacion <- file.path(ruta, "Modelizacion")
+ruta_anova_posthoc <- file.path(ruta_modelizacion, "ANOVA_PostHoc")
 ruta_informe <- file.path(ruta, "Informe")
 ruta_graficos <- file.path(ruta, "Graficos")
 
@@ -51,11 +52,13 @@ ruta_graficos_modelos_mixtos <- file.path(ruta_graficos, "Modelos_Mixtos")
 
 
 
+
 # Crear las carpetas si no existen
 dir.create(ruta_datos, recursive = TRUE, showWarnings = FALSE)
 dir.create(ruta_depuracion, recursive = TRUE, showWarnings = FALSE)
 dir.create(ruta_descriptivos, recursive = TRUE, showWarnings = FALSE)
 dir.create(ruta_modelizacion, recursive = TRUE, showWarnings = FALSE)
+dir.create(ruta_anova_posthoc, recursive = TRUE, showWarnings = FALSE)
 dir.create(ruta_informe, recursive = TRUE, showWarnings = FALSE)
 dir.create(ruta_graficos, recursive = TRUE, showWarnings = FALSE)
 dir.create(ruta_boxplots_ligas, recursive = TRUE, showWarnings = FALSE)
@@ -1453,6 +1456,47 @@ for (var in variables_numericas_preseleccion) {
 }
 
 
+
+# 6.5. ANÁLISIS ANOVA Y PRUEBAS POST-HOC PARA VARIABLES NUMÉRICAS POR POSICIÓN
+
+# Realizar ANOVA, eta-squared y pruebas post-hoc para las variables preseleccionadas
+resultados_anova <- list()
+
+for (variable in variables_numericas_preseleccion) {
+  
+  # Construir la fórmula del ANOVA
+  formula_anova <- as.formula(paste(variable, "~ teamPosition"))
+  
+  # Realizar el ANOVA
+  anova_model <- aov(formula_anova, data = datos_agrupados_finales)
+  
+  # Resumen del ANOVA
+  summary_anova <- summary(anova_model)
+  
+  # Calcular eta-squared
+  eta_sq <- etaSquared(anova_model)
+  
+  # Prueba post-hoc de Tukey
+  tukey_posthoc <- emmeans(anova_model, pairwise ~ teamPosition)
+  
+  # Letter coding
+  letter_coding <- cld(tukey_posthoc$emmeans, Letters = letters)
+  
+  # Guardar los resultados en la lista
+  resultados_anova[[variable]] <- list(
+    F_value = summary_anova[[1]][[1, "F value"]],
+    p_value = summary_anova[[1]][[1, "Pr(>F)"]],
+    eta_sq = eta_sq$eta2,
+    Letter_Coding = letter_coding
+  )
+}
+
+# Convertir los resultados en un dataframe
+tabla_resumen_anova <- do.call(rbind, lapply(resultados_anova, function(x) data.frame(x)))
+tabla_resumen_anova <- cbind(Variable = names(resultados_anova), tabla_resumen_anova)
+
+# Guardar el resumen en un archivo CSV en la subcarpeta de ANOVA_PostHoc
+write.csv(tabla_resumen_anova, file = file.path(ruta_anova_posthoc, "resumen_anova_variables.csv"), row.names = FALSE)
 
 
 
