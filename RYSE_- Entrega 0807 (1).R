@@ -19,7 +19,7 @@ install_and_load <- function(package) {
 }
 
 # Lista de liberias necesarias
-libraries <- c("tidyverse", "GGally", "caret", "plm", "ggplot2", "readxl", "openxlsx", "psych", "pls", "here", "kml3d", "gridExtra", "dyplr",  "nlme", "lme4", "stargazer", "emmeans", "kableExtra", "purrr", "reshape2")
+libraries <- c("tidyverse", "GGally", "caret", "plm", "ggplot2", "readxl", "openxlsx", "psych", "pls", "here", "kml3d", "gridExtra", "dyplr",  "nlme", "lme4", "stargazer", "emmeans", "kableExtra", "purrr", "reshape2", "lsr", "multcompView")
 
 # Ejecutar la función para cada libreria en la lista
 lapply(libraries, install_and_load)
@@ -241,8 +241,6 @@ freq_abs_rel <- lapply(variables_categoricas, function(var) {
   freq_rel <- prop.table(freq_abs)
   list(freq_abs = freq_abs, freq_rel = freq_rel)
 })
-write.xlsx(freq_abs_rel, file = file.path(ruta_descriptivos, "Frecuencias_Absolutas_y_Relativas.xlsx"), overwrite = TRUE)
-
 
 
 # Guardar
@@ -1464,43 +1462,68 @@ resultados_anova <- list()
 
 for (variable in variables_numericas_preseleccion) {
   
-  # Construir la fórmula del ANOVA
-  formula_anova <- as.formula(paste(variable, "~ teamPosition"))
+  # Adaptar el nombre de la variable para que coincida con el dataset (añadir .mean)
+  variable_mean <- paste0(variable, ".mean")
   
-  # Realizar el ANOVA
-  anova_model <- aov(formula_anova, data = datos_agrupados_finales)
-  
-  # Resumen del ANOVA
-  summary_anova <- summary(anova_model)
-  
-  # Calcular eta-squared
-  eta_sq <- etaSquared(anova_model)
-  
-  # Prueba post-hoc de Tukey
-  tukey_posthoc <- emmeans(anova_model, pairwise ~ teamPosition)
-  
-  # Letter coding
-  letter_coding <- cld(tukey_posthoc$emmeans, Letters = letters)
-  
-  # Guardar los resultados en la lista
-  resultados_anova[[variable]] <- list(
-    F_value = summary_anova[[1]][[1, "F value"]],
-    p_value = summary_anova[[1]][[1, "Pr(>F)"]],
-    eta_sq = eta_sq$eta2,
-    Letter_Coding = letter_coding
-  )
+  # Verificar si la variable existe en el dataset
+  if (variable_mean %in% colnames(datos_agrupados_finales)) {
+    
+    # Construir la fórmula del ANOVA
+    formula_anova <- as.formula(paste(variable_mean, "~ teamPosition"))
+    
+    # Realizar el ANOVA
+    anova_model <- aov(formula_anova, data = datos_agrupados_finales)
+    
+    # Resumen del ANOVA
+    summary_anova <- summary(anova_model)
+    
+    # Calcular eta-squared
+    eta_sq <- etaSquared(anova_model)
+    
+    # Extraer el valor de eta-squared
+    eta_value <- eta_sq[1, "eta.sq"]
+    
+    # Prueba post-hoc de Tukey
+    tukey_posthoc <- emmeans(anova_model, pairwise ~ teamPosition)
+    
+    # Generar las comparaciones post-hoc usando multcompView::cld()
+    comparison_letters <- multcomp::cld(tukey_posthoc, Letters = letters)
+    
+    # Guardar los resultados en la lista
+    resultados_anova[[variable]] <- list(
+      F_value = summary_anova[[1]][[1, "F value"]],
+      p_value = summary_anova[[1]][[1, "Pr(>F)"]],
+      eta_sq = eta_value,
+      Letter_Coding = comparison_letters
+    )
+  } 
 }
 
-# Convertir los resultados en un dataframe
-tabla_resumen_anova <- do.call(rbind, lapply(resultados_anova, function(x) data.frame(x)))
-tabla_resumen_anova <- cbind(Variable = names(resultados_anova), tabla_resumen_anova)
-
-# Guardar el resumen en un archivo CSV en la subcarpeta de ANOVA_PostHoc
-write.csv(tabla_resumen_anova, file = file.path(ruta_anova_posthoc, "resumen_anova_variables.csv"), row.names = FALSE)
+# Visualizar los resultados
+resultados_anova
 
 
-
-
+# Guardar los resultados de ANOVA en archivos CSV
+for (variable in names(resultados_anova)) {
+  
+  # Definir el nombre del archivo
+  ruta_archivo <- file.path(ruta_anova_posthoc, paste0(variable, "_ANOVA_PostHoc.csv"))
+  
+  # Crear un dataframe con los resultados del ANOVA y la codificación de letras
+  resultados_df <- data.frame(
+    teamPosition = resultados_anova[[variable]]$Letter_Coding$teamPosition,
+    emmean = resultados_anova[[variable]]$Letter_Coding$emmean,
+    SE = resultados_anova[[variable]]$Letter_Coding$SE,
+    lower.CL = resultados_anova[[variable]]$Letter_Coding$lower.CL,
+    upper.CL = resultados_anova[[variable]]$Letter_Coding$upper.CL,
+    group = resultados_anova[[variable]]$Letter_Coding$.group,
+    F_value = resultados_anova[[variable]]$F_value,
+    p_value = resultados_anova[[variable]]$p_value,
+    eta_sq = resultados_anova[[variable]]$eta_sq
+  )
+  
+  # Guardar el dataframe como archivo CSV
+  write.csv(resultados_df, ruta_archivo, row.names = FALSE)
 
 
 
