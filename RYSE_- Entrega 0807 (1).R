@@ -1543,9 +1543,6 @@ for (var in variables_numericas_preseleccion) {
 
 # 6.5. ANÁLISIS ANOVA Y PRUEBAS POST-HOC PARA VARIABLES NUMÉRICAS POR POSICIÓN
 
-# Asegurarse de cargar los paquetes necesarios
-library(multcompView)
-
 # Realizar ANOVA, eta-squared y pruebas post-hoc para las variables preseleccionadas
 resultados_anova <- list()
 
@@ -1572,18 +1569,22 @@ for (variable in variables_numericas_preseleccion) {
     # Extraer el valor de eta-squared
     eta_value <- eta_sq[1, "eta.sq"]
     
-    # Prueba post-hoc de Tukey usando TukeyHSD
-    tukey_posthoc <- TukeyHSD(anova_model, "teamPosition")
+    # Prueba post-hoc de Tukey usando emmeans
+    tukey_posthoc <- emmeans(anova_model, pairwise ~ teamPosition)
     
-    # Extraer las letras de los grupos de Tukey usando multcompView para generar las letras
-    tukey_letters <- multcompView::multcompLetters(tukey_posthoc$teamPosition[, "p adj"])$Letters
+    # Resumen de las medias marginales de los contrastes
+    summary_emmeans <- summary(tukey_posthoc$emmeans)
     
-    # Guardar los resultados en la lista
+    # Comparaciones entre las posiciones
+    comparaciones <- pairs(tukey_posthoc)
+    
+    # Guardar los resultados en la lista (sin `cld`)
     resultados_anova[[variable]] <- list(
       F_value = summary_anova[[1]][[1, "F value"]],
       p_value = summary_anova[[1]][[1, "Pr(>F)"]],
       eta_sq = eta_value,
-      Letter_Coding = tukey_letters
+      emmeans = summary_emmeans,
+      comparaciones = summary(comparaciones)
     )
   } 
 }
@@ -1591,21 +1592,32 @@ for (variable in variables_numericas_preseleccion) {
 # Crear un dataframe vacío para acumular todos los resultados de ANOVA
 todos_resultados_anova <- data.frame()
 
-# Guardar los resultados de ANOVA en archivos Excel
+# Guardar los resultados de ANOVA en archivos CSV
 for (variable in names(resultados_anova)) {
   
   # Definir el nombre del archivo
   ruta_archivo <- file.path(ruta_anova_posthoc, paste0(variable, "_ANOVA_PostHoc.csv"))
   
-  # Crear un dataframe con los resultados del ANOVA y la codificación de letras para esta variable
+  # Extraer las medias marginales y comparaciones para esta variable
+  emmeans_df <- resultados_anova[[variable]]$emmeans
+  comparaciones_df <- resultados_anova[[variable]]$comparaciones
+  
+  # Crear un dataframe con los resultados del ANOVA y las comparaciones
   resultados_df <- data.frame(
     Variable = variable,  # Añadir la columna de la variable actual
-    teamPosition = names(resultados_anova[[variable]]$Letter_Coding),
-    group = resultados_anova[[variable]]$Letter_Coding,
-    F_value = resultados_anova[[variable]]$F_value,
-    p_value = resultados_anova[[variable]]$p_value,
-    eta_sq = resultados_anova[[variable]]$eta_sq
+    teamPosition = emmeans_df$teamPosition,
+    emmean = emmeans_df$emmean,
+    SE = emmeans_df$SE,
+    lower.CL = emmeans_df$lower.CL,
+    upper.CL = emmeans_df$upper.CL
   )
+  
+  # Añadir solo una vez los resultados globales de ANOVA
+  if (!is.null(resultados_anova[[variable]]$F_value)) {
+    resultados_df$F_value <- resultados_anova[[variable]]$F_value
+    resultados_df$p_value <- resultados_anova[[variable]]$p_value
+    resultados_df$eta_sq <- resultados_anova[[variable]]$eta_sq
+  }
   
   # Acumular los resultados en el dataframe general
   todos_resultados_anova <- rbind(todos_resultados_anova, resultados_df)
@@ -1613,6 +1625,7 @@ for (variable in names(resultados_anova)) {
 
 # Guardar los resultados como un archivo Excel en lugar de CSV
 write.xlsx(todos_resultados_anova, file = file.path(ruta_anova_posthoc, "Resultados_ANOVA_PostHoc_Consolidados.xlsx"), overwrite = TRUE)
+
 
 
 
