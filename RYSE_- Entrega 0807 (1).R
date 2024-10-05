@@ -177,7 +177,7 @@ datos_originales_agrupados <- datos_originales_agrupados %>%
 
 
 # Guardar las estadísticas agregadas por jugador
-write.xlsx(datos_originales_agrupados, file = file.path(ruta_descriptivos, "Estadisticas_Agrupadas_Por_Jugador.xlsx"), overwrite = TRUE)
+write.xlsx(datos_originales_agrupados, file = file.path(ruta_descriptivos, "Datos_Agrupadas_Por_Jugador.xlsx"), overwrite = TRUE)
 
 
 
