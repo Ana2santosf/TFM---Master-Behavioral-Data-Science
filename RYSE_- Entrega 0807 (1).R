@@ -1508,15 +1508,18 @@ analisis_por_liga <- datos_agrupados_finales %>%
     max = ~ max(.x, na.rm = TRUE)
   )))
 
-# Convertir las listas en columnas atómicas, si es necesario
-analisis_por_liga_long <- analisis_por_liga %>%
-  pivot_longer(cols = -League, names_to = c("variable", "stat"), names_sep = "_")
 
-# Mostrar el resultado del análisis por liga
-print(analisis_por_liga_long)
+# Asegurarse de que las estadísticas estén organizadas en columnas para cada liga
+analisis_por_liga_wide <- analisis_por_liga %>%
+  pivot_longer(cols = -League, names_to = c("variable", "stat"), names_sep = "_") %>%
+  pivot_wider(names_from = stat, values_from = value)
+
+# Mostrar el resultado del análisis por liga en formato ancho
+print(analisis_por_liga_wide)
 
 # Convertir el análisis por liga en un data frame
-analisis_por_liga_df <- as.data.frame(analisis_por_liga_long)
+analisis_por_liga_df <- as.data.frame(analisis_por_liga_wide)
+
 
 # Guardar el análisis por liga en formato Excel en la carpeta de Modelización
 write.xlsx(analisis_por_liga_df, file = file.path(ruta_modelizacion, "Analisis_Por_Liga.xlsx"), overwrite = TRUE)
