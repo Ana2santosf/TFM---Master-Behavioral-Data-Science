@@ -47,7 +47,7 @@ ruta_pcr <- file.path(ruta_graficos, "PCR")
 ruta_pca <- file.path(ruta_graficos, "PCA")
 ruta_correlacion <- file.path(ruta_graficos, "Correlacion")
 ruta_graficos_modelos_mixtos <- file.path(ruta_graficos, "Modelos_Mixtos")
-
+ruta_graficos_elo <- file.path(ruta_graficos, "Clustering - ELO")
 
 
 
@@ -68,6 +68,7 @@ dir.create(ruta_pcr, recursive = TRUE, showWarnings = FALSE)
 dir.create(ruta_pca, recursive = TRUE, showWarnings = FALSE)
 dir.create(ruta_correlacion, recursive = TRUE, showWarnings = FALSE)
 dir.create(ruta_graficos_modelos_mixtos, recursive = TRUE, showWarnings = FALSE)
+dir.create(ruta_graficos_elo, recursive = TRUE, showWarnings = FALSE)
 
 
 
@@ -1320,12 +1321,48 @@ contrastes_trimestres$contrasts %>%
   save_kable(file = file.path(ruta_modelizacion, "Contrastes_Múltiples_Trimestres_Grupo.html"))
 
 
+# 6.4. ANÁLISIS DE CLUSTERS Y ELO (test Chi-cuadrado de independencia, ya que ELO es una variable categorica)
 
 
+# Unir los clusters con el dataset principal
+datos_filtrados_mas_de_50 <- datos_filtrados_mas_de_50 %>%
+  left_join(BD.kml_seleccion %>% select(summonerName, clusters_2), by = "summonerName")
+
+# Comprobar si la unión fue exitosa
+head(datos_filtrados_mas_de_50$clusters_2)
+     
+     
+
+# Crear una tabla de contingencia entre los clusters (A y B) y el ELO
+tabla_contingencia <- table(datos_filtrados_mas_de_50$clusters_2, datos_filtrados_mas_de_50$ELO)
+
+# Realizar la prueba de Chi-Cuadrado
+chi_square_test <- chisq.test(tabla_contingencia)
+
+# Mostrar los resultados
+print(chi_square_test)
+
+# Verificar si hay alguna asociación significativa entre los clusters y el ELO
+cat("Valor p de la prueba Chi-Cuadrado:", chi_square_test$p.value)
+
+# Calcular los residuos ajustados
+residuos_ajustados <- chisq.test(tabla_contingencia)$stdres
+
+# Mostrar los residuos ajustados
+print(residuos_ajustados)
+
+# Visualizar los residuos ajustados como un heatmap
+library(ggplot2)
+heatmap_data <- as.data.frame(as.table(residuos_ajustados))
+
+ggplot(heatmap_data, aes(Var1, Var2, fill = Freq)) +
+  geom_tile() +
+  scale_fill_gradient2(low = "red", high = "blue", mid = "white", midpoint = 0) +
+  labs(title = "Residuos ajustados del Chi-Cuadrado", x = "Cluster", y = "ELO", fill = "Residuos") +
+  ggsave(filename = file.path(ruta_graficos_elo, "Residuos_Ajustados_Clustering_ELO.png"), width = 8, height = 6)
 
 
-
-# 6.4. ANÁLISIS POR LIGAS
+# 6.5. ANÁLISIS POR LIGAS
 
 # Análisis individualizado por liga (datos sin extremos)
 analisis_por_liga <- datos_agrupados_finales %>%
@@ -1371,7 +1408,19 @@ for (var in variables_numericas_preseleccion) {
 }
 
 
-# #### EJEMPLO DE MODELO DE EFECTOS MIXTOS (DAVID) #### 
+
+
+
+
+
+
+
+
+
+
+
+
+# #### EJEMPLO ORIGINAL DE MODELO DE EFECTOS MIXTOS (DAVID) #### 
 
 # 
 # # Paquetes necesarios para la modelización
