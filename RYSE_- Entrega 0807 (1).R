@@ -19,7 +19,7 @@ install_and_load <- function(package) {
 }
 
 # Lista de liberias necesarias
-libraries <- c("tidyverse", "GGally", "caret", "plm", "ggplot2", "readxl", "openxlsx", "psych", "pls", "here", "kml3d", "gridExtra", "dyplr",  "nlme", "lme4", "stargazer", "emmeans", "kableExtra", "purrr")
+libraries <- c("tidyverse", "GGally", "ggplot2", "readxl", "openxlsx", "psych", "pls", "here", "kml3d", "gridExtra", "dyplr",  "nlme", "lme4", "stargazer", "emmeans", "kableExtra", "purrr")
 
 # Ejecutar la función para cada libreria en la lista
 lapply(libraries, install_and_load)
