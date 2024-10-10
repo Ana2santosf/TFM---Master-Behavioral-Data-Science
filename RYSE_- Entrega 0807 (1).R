@@ -740,8 +740,8 @@ goldEarnedPerMinute_utility_sample <- goldEarnedPerMinute_per_quarter_utility %>
 filter(summonerName %in% utility_players_sample)
 
 
-#goldEarnedPerMinute_non_utility_sample <- goldEarnedPerMinute_per_quarter_non_utility %>%
- # filter(summonerName %in% non_utility_players_sample)
+goldEarnedPerMinute_non_utility_sample <- goldEarnedPerMinute_per_quarter_non_utility %>%
+  filter(summonerName %in% non_utility_players_sample)
 
 # Visualizar el rendimiento de las posiciones UTILITY (muestra)
 p <- ggplot(goldEarnedPerMinute_utility_sample, aes(x = quarter, y = goldEarnedPerMinute_total, color = summonerName, group = summonerName)) +
@@ -1355,12 +1355,15 @@ print(residuos_ajustados)
 library(ggplot2)
 heatmap_data <- as.data.frame(as.table(residuos_ajustados))
 
-ggplot(heatmap_data, aes(Var1, Var2, fill = Freq)) +
+heatmap_plot <- ggplot(heatmap_data, aes(Var1, Var2, fill = Freq)) +
   geom_tile() +
   scale_fill_gradient2(low = "red", high = "blue", mid = "white", midpoint = 0) +
-  labs(title = "Residuos ajustados del Chi-Cuadrado", x = "Cluster", y = "ELO", fill = "Residuos") +
-  ggsave(filename = file.path(ruta_graficos_elo, "Residuos_Ajustados_Clustering_ELO.png"), width = 8, height = 6)
+  labs(title = "Residuos ajustados del Chi-Cuadrado", x = "Cluster", y = "ELO", fill = "Residuos")
 
+print(heatmap_plot)
+
+ggsave(filename = file.path(ruta_graficos_elo, "Residuos_Ajustados_Clustering_ELO.png"), 
+       plot = heatmap_plot, width = 8, height = 6)
 
 # 6.5. ANÁLISIS POR LIGAS
 
@@ -1401,7 +1404,7 @@ for (var in variables_numericas_preseleccion) {
     theme(legend.position = "none")  # Opcional, para eliminar la leyenda
   
   # Guardar el gráfico en la carpeta de gráficos
-  ggsave(filename = file.path(ruta_boxplots_ligas, paste0("Boxplot_comparacion_por_liga", var, ".png")), 
+  ggsave(filename = file.path(ruta_boxplots_ligas, paste0("Boxplot_comparacion_por_liga ", var, ".png")), 
          plot = p, width = 10, height = 6)
   
   cat("Boxplot comparativo para", var, "exportado correctamente.\n")
