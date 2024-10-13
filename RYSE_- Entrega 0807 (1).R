@@ -1411,13 +1411,30 @@ for (var in variables_numericas_preseleccion) {
 }
 
 
+#######################################################################################
+### COMENTARIOS DAVID 3-10-24: Clustering longitudinal y  ###
+# En general veo cómo habéis ido probando distintos clustering hasta quedaros con 2 particiones --> OK
+# Estimáis modelos mixtos cruzando las particiones con las variables de rendimiento optimizando parte fija y aleatoria --> Ok
+# Cuidado con los gráficos de medias marginales pues aparece un . en el eje X y otro punto en los grupos de la leyenda.
+#
 
+### COMENTARIOS FINALES A VUESTRO CÓDIGO
 
+# 1) Fragmentar el código según el tipo de tarea que se lleve a cabo y guardarlo con nombre diferente en su correspondiente carpeta:
+# - Depuración y generación de variables
+# - Descriptivos
+# - Modelización: ** Clustering
+#                 ** Mixtos
+#                 ** Predicción de ELO a partir de clustering (no estoy seguro si éste es el objetivo)
+# 2) No forcéis a crear carpetas, generar y guardar archivos, generar y guardar gráficos, generar clusterings, etc...
+#    cada vez que se ejecuten los archivos .R. Decidid qué se ejecuta una única vez y que bases de datos se cargan en los scripts
+#    para evitar alargar innecesariamente el tiempo de cómputo... Que el código sea reproducible no implica que deba
+#    ejecutarse cada vez (yo no lo he ejecutado para no generar posibles conflictos)
+# 3) Los análisis que finalmente no se incluyan en el informe final se eliminan por completo (no es necesaria una carpeta análisis para borrar o borrados ;-)
+# 4) Cuándo tengáis la ÚLTIMA VERSIÓN DEL PROYECTO avisadme y haré el último pull para poder valorarlo
+# 5) Habéis hecho un trabajo MAGNÍFICO, estoy deseando leer vuestro informe final!!!
 
-
-
-
-
+#######################################################################################
 
 
 
