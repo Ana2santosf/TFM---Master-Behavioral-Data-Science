@@ -529,9 +529,6 @@ for (var in variables_numericas_preseleccion) {
 
 
 
-
-
-
 # SECCION 5: ANALISIS BIVARIADO
 
 # Análisis de correlación
@@ -552,6 +549,7 @@ print(cor_matrix)
 
 
 
+# SECCIÓN COMPLEMENTARIA
 ## ANALISIS ADICIONALES (Kills, Assists y totalMinionsKilled)
 ## CONJETURAS - RESULTADOS DE ANALISIS NUMERICOS:
 
@@ -1473,6 +1471,12 @@ cat("Tabla comparativa de modelos guardada en la carpeta de modelización como '
 ls.tabla <- data.frame(summary(emmeans(mod.D2, pairwise ~ clusters_2 * Register, 
                                        at = list(Register = c(1, 2, 3, 4)))))
 
+# Asegurarse de que 'Register' es numérico
+ls.tabla$Register <- as.numeric(ls.tabla$Register)
+
+# Eliminar niveles vacíos o no deseados en 'clusters_2'
+ls.tabla$clusters_2 <- droplevels(ls.tabla$clusters_2)
+
 # Inspeccionar los nombres de las columnas para ver cómo se llaman los intervalos de confianza
 print(colnames(ls.tabla))
 
@@ -1610,7 +1614,7 @@ for (var in variables_numericas_preseleccion) {
 }
   
 
-# 6.5. ANÁLISIS ANOVA Y PRUEBAS POST-HOC PARA VARIABLES NUMÉRICAS POR POSICIÓN
+# 6.6. ANÁLISIS ANOVA Y PRUEBAS POST-HOC PARA VARIABLES NUMÉRICAS POR POSICIÓN
 
 # Realizar ANOVA, eta-squared y pruebas post-hoc para las variables preseleccionadas
 resultados_anova <- list()
@@ -1661,12 +1665,11 @@ for (variable in variables_numericas_preseleccion) {
 # Crear un dataframe vacío para acumular todos los resultados de ANOVA
 todos_resultados_anova <- data.frame()
 
-<<<<<<< HEAD
-# Guardar los resultados de ANOVA en archivos CSV
+# Guardar los resultados de ANOVA en archivos Excel
 for (variable in names(resultados_anova)) {
   
   # Definir el nombre del archivo
-  ruta_archivo <- file.path(ruta_anova_posthoc, paste0(variable, "_ANOVA_PostHoc.csv"))
+  ruta_archivo <- file.path(ruta_anova_posthoc, paste0(variable, "_ANOVA_PostHoc.xlsx"))
   
   # Extraer las medias marginales y comparaciones para esta variable
   emmeans_df <- resultados_anova[[variable]]$emmeans
@@ -1693,19 +1696,24 @@ for (variable in names(resultados_anova)) {
   todos_resultados_anova <- rbind(todos_resultados_anova, resultados_df)
 }
 
-# Guardar los resultados como un archivo Excel en lugar de CSV
+# Guardar cada resultado de ANOVA en un archivo Excel individual
+write.xlsx(resultados_df, file = ruta_archivo, overwrite = TRUE)
+
+
+# Guardar todos los resultados consolidados en un archivo Excel
 write.xlsx(todos_resultados_anova, file = file.path(ruta_anova_posthoc, "Resultados_ANOVA_PostHoc_Consolidados.xlsx"), overwrite = TRUE)
-=======
+
+
 #######################################################################################
 ### COMENTARIOS DAVID 3-10-24: Clustering longitudinal y  ###
 # En general veo cómo habéis ido probando distintos clustering hasta quedaros con 2 particiones --> OK
 # Estimáis modelos mixtos cruzando las particiones con las variables de rendimiento optimizando parte fija y aleatoria --> Ok
-# Cuidado con los gráficos de medias marginales pues aparece un . en el eje X y otro punto en los grupos de la leyenda.
+# Cuidado con los gráficos de medias marginales pues aparece un . en el eje X y otro punto en los grupos de la leyenda. --> HECHO
 #
 
 ### COMENTARIOS FINALES A VUESTRO CÓDIGO
 
-# 1) Fragmentar el código según el tipo de tarea que se lleve a cabo y guardarlo con nombre diferente en su correspondiente carpeta:
+# 1) Fragmentar el código según el tipo de tarea que se lleve a cabo y guardarlo con nombre diferente en su correspondiente carpeta: --> HECHO HASTA SECCIÓN 5, falta la SECCION COMPLEMENTARIA y la 6...
 # - Depuración y generación de variables
 # - Descriptivos
 # - Modelización: ** Clustering
@@ -1715,13 +1723,11 @@ write.xlsx(todos_resultados_anova, file = file.path(ruta_anova_posthoc, "Resulta
 #    cada vez que se ejecuten los archivos .R. Decidid qué se ejecuta una única vez y que bases de datos se cargan en los scripts
 #    para evitar alargar innecesariamente el tiempo de cómputo... Que el código sea reproducible no implica que deba
 #    ejecutarse cada vez (yo no lo he ejecutado para no generar posibles conflictos)
-# 3) Los análisis que finalmente no se incluyan en el informe final se eliminan por completo (no es necesaria una carpeta análisis para borrar o borrados ;-)
+# 3) Los análisis que finalmente no se incluyan en el informe final se eliminan por completo (no es necesaria una carpeta análisis para borrar o borrados ;-) --> HECHO
 # 4) Cuándo tengáis la ÚLTIMA VERSIÓN DEL PROYECTO avisadme y haré el último pull para poder valorarlo
 # 5) Habéis hecho un trabajo MAGNÍFICO, estoy deseando leer vuestro informe final!!!
 
 #######################################################################################
-
->>>>>>> 44ad9104145bd1774959784148f11a4ac87456c9
 
 
 
