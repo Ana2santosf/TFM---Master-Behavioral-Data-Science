@@ -19,7 +19,7 @@ install_and_load <- function(package) {
 }
 
 # Lista de liberias necesarias
-libraries <- c("tidyverse", "GGally", "caret", "plm", "ggplot2", "readxl", "openxlsx", "psych", "pls", "here", "kml3d", "gridExtra", "dyplr",  "nlme", "lme4", "stargazer", "emmeans", "kableExtra", "purrr")
+libraries <- c("tidyverse", "GGally", "ggplot2", "readxl", "openxlsx", "psych", "pls", "here", "kml3d", "gridExtra", "dyplr",  "nlme", "lme4", "stargazer", "emmeans", "kableExtra", "purrr")
 
 # Ejecutar la función para cada libreria en la lista
 lapply(libraries, install_and_load)
@@ -740,8 +740,8 @@ goldEarnedPerMinute_utility_sample <- goldEarnedPerMinute_per_quarter_utility %>
 filter(summonerName %in% utility_players_sample)
 
 
-#goldEarnedPerMinute_non_utility_sample <- goldEarnedPerMinute_per_quarter_non_utility %>%
- # filter(summonerName %in% non_utility_players_sample)
+goldEarnedPerMinute_non_utility_sample <- goldEarnedPerMinute_per_quarter_non_utility %>%
+  filter(summonerName %in% non_utility_players_sample)
 
 # Visualizar el rendimiento de las posiciones UTILITY (muestra)
 p <- ggplot(goldEarnedPerMinute_utility_sample, aes(x = quarter, y = goldEarnedPerMinute_total, color = summonerName, group = summonerName)) +
@@ -1355,12 +1355,15 @@ print(residuos_ajustados)
 library(ggplot2)
 heatmap_data <- as.data.frame(as.table(residuos_ajustados))
 
-ggplot(heatmap_data, aes(Var1, Var2, fill = Freq)) +
+heatmap_plot <- ggplot(heatmap_data, aes(Var1, Var2, fill = Freq)) +
   geom_tile() +
   scale_fill_gradient2(low = "red", high = "blue", mid = "white", midpoint = 0) +
-  labs(title = "Residuos ajustados del Chi-Cuadrado", x = "Cluster", y = "ELO", fill = "Residuos") +
-  ggsave(filename = file.path(ruta_graficos_elo, "Residuos_Ajustados_Clustering_ELO.png"), width = 8, height = 6)
+  labs(title = "Residuos ajustados del Chi-Cuadrado", x = "Cluster", y = "ELO", fill = "Residuos")
 
+print(heatmap_plot)
+
+ggsave(filename = file.path(ruta_graficos_elo, "Residuos_Ajustados_Clustering_ELO.png"), 
+       plot = heatmap_plot, width = 8, height = 6)
 
 # 6.5. ANÁLISIS POR LIGAS
 
@@ -1401,20 +1404,37 @@ for (var in variables_numericas_preseleccion) {
     theme(legend.position = "none")  # Opcional, para eliminar la leyenda
   
   # Guardar el gráfico en la carpeta de gráficos
-  ggsave(filename = file.path(ruta_boxplots_ligas, paste0("Boxplot_comparacion_por_liga", var, ".png")), 
+  ggsave(filename = file.path(ruta_boxplots_ligas, paste0("Boxplot_comparacion_por_liga ", var, ".png")), 
          plot = p, width = 10, height = 6)
   
   cat("Boxplot comparativo para", var, "exportado correctamente.\n")
 }
 
 
+#######################################################################################
+### COMENTARIOS DAVID 3-10-24: Clustering longitudinal y  ###
+# En general veo cómo habéis ido probando distintos clustering hasta quedaros con 2 particiones --> OK
+# Estimáis modelos mixtos cruzando las particiones con las variables de rendimiento optimizando parte fija y aleatoria --> Ok
+# Cuidado con los gráficos de medias marginales pues aparece un . en el eje X y otro punto en los grupos de la leyenda.
+#
 
+### COMENTARIOS FINALES A VUESTRO CÓDIGO
 
+# 1) Fragmentar el código según el tipo de tarea que se lleve a cabo y guardarlo con nombre diferente en su correspondiente carpeta:
+# - Depuración y generación de variables
+# - Descriptivos
+# - Modelización: ** Clustering
+#                 ** Mixtos
+#                 ** Predicción de ELO a partir de clustering (no estoy seguro si éste es el objetivo)
+# 2) No forcéis a crear carpetas, generar y guardar archivos, generar y guardar gráficos, generar clusterings, etc...
+#    cada vez que se ejecuten los archivos .R. Decidid qué se ejecuta una única vez y que bases de datos se cargan en los scripts
+#    para evitar alargar innecesariamente el tiempo de cómputo... Que el código sea reproducible no implica que deba
+#    ejecutarse cada vez (yo no lo he ejecutado para no generar posibles conflictos)
+# 3) Los análisis que finalmente no se incluyan en el informe final se eliminan por completo (no es necesaria una carpeta análisis para borrar o borrados ;-)
+# 4) Cuándo tengáis la ÚLTIMA VERSIÓN DEL PROYECTO avisadme y haré el último pull para poder valorarlo
+# 5) Habéis hecho un trabajo MAGNÍFICO, estoy deseando leer vuestro informe final!!!
 
-
-
-
-
+#######################################################################################
 
 
 
