@@ -817,8 +817,15 @@ validationplot(pcr_model_con_interacciones, val.type = "MSEP")
 dev.off()
 
 # Visualización de los loadings de los componentes principales
-png(file = file.path(ruta_pcr, "Loadings_Componentes_PCR.png"))
-barplot(loadings(pcr_model_con_interacciones), main = "Cargas de los Componentes Principales (PCR)")
+png(file = file.path(ruta_pcr, "Loadings_Componentes_PCR.png"), width = 800, height = 1000)
+
+colores <- rainbow(20)
+par(mar = c(5, 4, 16, 2))  # (bottom, left, top, right)
+barplot(loadings(pcr_model_con_interacciones), main = "Cargas de los Componentes Principales (PCR)",
+        col = colores,  
+        legend.text = TRUE,  
+        args.legend = list(x = "topright", inset = c(-0.04, -0.1)))  
+
 dev.off()
 
 cat("Modelo PCR y gráficos guardados correctamente.")
