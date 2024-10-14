@@ -785,6 +785,8 @@ summary_pcr <- summary(pcr_model_con_interacciones)
 
 print(summary_pcr)
 
+explained_variance <- explvar(pcr_model_con_interacciones)
+explained_variance
 ####
 ##########
 
