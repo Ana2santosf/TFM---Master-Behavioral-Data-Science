@@ -1564,6 +1564,52 @@ print(heatmap_plot)
 ggsave(filename = file.path(ruta_graficos_elo, "Residuos_Ajustados_Clustering_ELO.png"), 
        plot = heatmap_plot, width = 8, height = 6)
 
+
+
+#hacemos lo mismo para 5 clusters
+# Unir los clusters con el dataset principal
+datos_filtrados_mas_de_50 <- datos_filtrados_mas_de_50 %>%
+  left_join(BD.kml_long_seleccion %>% select(summonerName, clusters_5), by = "summonerName")
+
+# Comprobar si la unión fue exitosa
+head(datos_filtrados_mas_de_50$clusters_5)
+
+# Crear una tabla de contingencia entre los clusters (A, B, C, D, E) y el ELO
+tabla_contingencia2 <- table(datos_filtrados_mas_de_50$clusters_5, datos_filtrados_mas_de_50$ELO)
+
+# Realizar la prueba de Chi-Cuadrado
+chi_square_test2 <- chisq.test(tabla_contingencia2)
+
+# Mostrar los resultados
+print(chi_square_test2)
+
+# Verificar si hay alguna asociación significativa entre los clusters y el ELO
+cat("Valor p de la prueba Chi-Cuadrado:", chi_square_test2$p.value)
+
+# Calcular los residuos ajustados
+residuos_ajustados2 <- chisq.test(tabla_contingencia2)$stdres
+
+# Mostrar los residuos ajustados
+print(residuos_ajustados2)
+
+# Visualizar los residuos ajustados como un heatmap
+library(ggplot2)
+heatmap_data <- as.data.frame(as.table(residuos_ajustados2))
+
+heatmap_plot2 <- ggplot(heatmap_data, aes(Var1, Var2, fill = Freq)) +
+  geom_tile() +
+  scale_fill_gradient2(low = "red", high = "blue", mid = "white", midpoint = 0) +
+  labs(title = "Residuos ajustados del Chi-Cuadrado (5 Clústeres)", x = "Cluster", y = "ELO", fill = "Residuos")
+
+print(heatmap_plot2)
+
+# Guardar el heatmap
+ggsave(filename = file.path(ruta_graficos_elo, "Residuos_Ajustados_Clustering_ELO_5_Clusters.png"), 
+       plot = heatmap_plot2, width = 8, height = 6)
+
+
+
+
 # 6.5. ANÁLISIS POR LIGAS
 
 # Análisis individualizado por liga (datos sin extremos)
