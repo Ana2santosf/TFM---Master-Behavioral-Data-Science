@@ -936,7 +936,7 @@ dev.off()
 # # 6.2.1.1 EJECUTANDO EL CLUSTERING SOBRE DATOS ENTEROS (SIN DIFERENCIAR ENTRE UTILITY Y NO)
 
 # Formatear datos a wide format, para que haya una columna por cada trimestre y una fila por cada jugador, para que pueda operar el paquete kml3d
-BD.kml <- goldEarnedPerMinute_per_quarter_non_utility %>%
+BD.kml <- goldEarnedPerMinute_per_quarter %>%
   select(summonerName, quarter, goldEarnedPerMinute_total) %>%
   pivot_wider(names_from = quarter, values_from = goldEarnedPerMinute_total, names_prefix = "quarter_")
 
