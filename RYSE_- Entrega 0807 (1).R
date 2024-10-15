@@ -851,10 +851,10 @@ barplot(loadings(pcr_model_con_interacciones), main = "Cargas de los Componentes
 
 dev.off()
 
+
 cat("Modelo PCR y gráficos guardados correctamente.")
 
-# Obtener las cargas de los componentes principales
-loadings(pcr_model_con_interacciones)
+
 
 
 
@@ -1626,9 +1626,9 @@ print(residuos_ajustados2)
 
 # Visualizar los residuos ajustados como un heatmap
 library(ggplot2)
-heatmap_data <- as.data.frame(as.table(residuos_ajustados2))
+heatmap_data2 <- as.data.frame(as.table(residuos_ajustados2))
 
-heatmap_plot2 <- ggplot(heatmap_data, aes(Var1, Var2, fill = Freq)) +
+heatmap_plot2 <- ggplot(heatmap_data2, aes(Var1, Var2, fill = Freq)) +
   geom_tile() +
   scale_fill_gradient2(low = "red", high = "blue", mid = "white", midpoint = 0) +
   labs(title = "Residuos ajustados del Chi-Cuadrado (5 Clústeres)", x = "Cluster", y = "ELO", fill = "Residuos")
