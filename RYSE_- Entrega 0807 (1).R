@@ -829,6 +829,8 @@ loadings_pcr_ordenado <- cbind(Variable = c("Kills", "Deaths", "Assists", "Champ
 # Ver el data frame reorganizado
 loadings_pcr_ordenado
 
+
+
 # Guardar el dataframe como un archivo Excel en la carpeta de modelización
 write.xlsx(loadings_pcr_ordenado, file = file.path(ruta_modelizacion, "Cargas_Componentes_PCR.xlsx"), overwrite = TRUE)
 
@@ -850,6 +852,36 @@ barplot(loadings(pcr_model_con_interacciones), main = "Cargas de los Componentes
         args.legend = list(x = "topright", inset = c(-0.04, -0.1)))  
 
 dev.off()
+
+
+###MIRAMOS DE CONSEGUIR GRAFICOS MÁS DETALLADOS PARA LOS 3 PRIMEROS COMPONENTES
+library(ggplot2)
+
+# Crear un vector de colores
+colores <- rainbow(nrow(loadings_pcr_ordenado))  # Un color diferente para cada variable
+
+# Crear gráficos para los tres primeros componentes
+for (i in 1:3) {
+  componente <- paste0("comp", i)  # Nombre de la columna del componente
+  titulo <- paste("Cargas de las Variables en", componente)  # Título para el gráfico
+  
+  # Crear el gráfico
+  p <- ggplot(loadings_pcr_ordenado, aes_string(x = "Variable", y = componente, fill = "Variable")) +
+    geom_bar(stat = "identity", width = 0.1) +  # Hacer las barras más delgadas
+    labs(title = titulo, y = "Carga") +  # Título y etiqueta del eje y
+    scale_fill_manual(values = colores) +  # Asignar colores
+    theme_minimal() +
+    theme(axis.text.x = element_blank(),  # Quitar etiquetas del eje x
+          legend.title = element_blank(),  # Quitar título de la leyenda
+          legend.position = "right")  # Colocar la leyenda a la derecha
+  
+  # Guardar el gráfico en un archivo PNG
+  png(file = file.path(ruta_pcr, paste0("Cargas_Variables_", i, ".png")), width = 800, height = 600)
+  print(p)  # Mostrar el gráfico en el dispositivo gráfico
+  dev.off()  # Cerrar el dispositivo gráfico
+}
+
+###
 
 
 cat("Modelo PCR y gráficos guardados correctamente.")
