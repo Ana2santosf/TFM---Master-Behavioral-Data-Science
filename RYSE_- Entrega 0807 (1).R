@@ -808,7 +808,30 @@ write.xlsx(pcr_importance, file = file.path(ruta_modelizacion, "PCR_Varianza_Exp
 
 # Guardar las cargas de los componentes principales
 loadings_pcr <- as.data.frame(loadings(pcr_model_con_interacciones))
-write.xlsx(loadings_pcr, file = file.path(ruta_modelizacion, "Cargas_Componentes_PCR.xlsx"), overwrite = TRUE)
+
+# Crear nuevo data frame con los loadings organizados
+loadings_pcr_ordenado <- data.frame(matrix(loadings_pcr$x, nrow = 19, ncol = 19))
+
+colnames(loadings_pcr_ordenado) <- paste0("comp", 1:19)
+
+
+loadings_pcr_ordenado <- cbind(Variable = c("Kills", "Deaths", "Assists", "Champion Experience", 
+                                            "Player.WR", "tirretkills", "totalMinionsKilled", 
+                                            "totalTimeCCDealt", "baronKills", "dragonKills",
+                                            "totalDamageDealt", "totalDamageTaken", 
+                                            "totalDamageDealtToChampions", 
+                                            "damageDealtToObjectives", "goldearnedPerMinute", 
+                                            "visionScore", "is_utility", 
+                                            "interaccion_assists_utility", 
+                                            "interaccion_visionScore_utility"),
+                               loadings_pcr_ordenado)
+
+# Ver el data frame reorganizado
+loadings_pcr_ordenado
+
+# Guardar el dataframe como un archivo Excel en la carpeta de modelización
+write.xlsx(loadings_pcr_ordenado, file = file.path(ruta_modelizacion, "Cargas_Componentes_PCR.xlsx"), overwrite = TRUE)
+
 
 
 # Visualización de los componentes principales
