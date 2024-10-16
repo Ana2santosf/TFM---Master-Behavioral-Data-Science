@@ -1617,6 +1617,16 @@ print(residuos_ajustados)
 library(ggplot2)
 heatmap_data <- as.data.frame(as.table(residuos_ajustados))
 
+# Ordenar heatmap data segun nivel de elo
+heatmap_data$Var2 <- factor(heatmap_data$Var2, 
+                            levels = c("Challenger", "Grandmaster", "Master", "Diamond", "Platinum"))
+
+# Reordenar la tabla
+heatmap_data <- heatmap_data[order(heatmap_data$Var2), ]
+
+# Ver el resultado
+print(heatmap_data)
+
 heatmap_plot <- ggplot(heatmap_data, aes(Var1, Var2, fill = Freq)) +
   geom_tile() +
   scale_fill_gradient2(low = "red", high = "blue", mid = "white", midpoint = 0) +
@@ -1658,6 +1668,16 @@ print(residuos_ajustados2)
 # Visualizar los residuos ajustados como un heatmap
 library(ggplot2)
 heatmap_data2 <- as.data.frame(as.table(residuos_ajustados2))
+
+# Ordenar heatmap data segun nivel de elo
+heatmap_data2$Var2 <- factor(heatmap_data2$Var2, 
+                            levels = c("Challenger", "Grandmaster", "Master", "Diamond", "Platinum"))
+
+# Reordenar la tabla
+heatmap_data2 <- heatmap_data2[order(heatmap_data2$Var2), ]
+
+# Ver el resultado
+print(heatmap_data2)
 
 heatmap_plot2 <- ggplot(heatmap_data2, aes(Var1, Var2, fill = Freq)) +
   geom_tile() +
