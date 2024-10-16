@@ -1360,8 +1360,7 @@ graficar_trayectorias_clusters <- function(variable, cluster_col) {
   ggplot(BD.kml_long_seleccion, aes(x = quarter, y = .data[[variable]], color = as.factor(.data[[cluster_col]]), group = summonerName)) +
     geom_line() +
     labs(title = paste("Trayectorias de", variable, "por trimestre (", cluster_col, ")"), x = "Trimestre", y = variable, color = "Cluster") +
-    theme_minimal() +
-    theme(legend.position = "none")  # Ocultar la leyenda para mayor claridad
+    theme_minimal() 
 }
 
 # Variables a graficar
