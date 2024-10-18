@@ -1313,6 +1313,8 @@ cldGE_seleccion <- cld3d(data.frame(BD.kml_seleccion), timeInData = list(goldear
 # Aplicar el algoritmo kml3d para el clustering longitudinal
 kml3d(cldGE_seleccion, nbRedrawing = 50)
 
+
+
 # Visualización
 BD.kml_long_seleccion <- BD.kml_seleccion %>%
   pivot_longer(
@@ -1335,6 +1337,7 @@ BD.kml_long_seleccion <- BD.kml_seleccion %>%
 # Obtener los clusters para 2 y 5 particiones
 clusters_2 <- getClusters(cldGE_seleccion, 2)
 clusters_5 <- getClusters(cldGE_seleccion, 5)
+
 
 # Verificar el número de jugadores únicos en el dataframe largo
 jugadores_unicos <- unique(BD.kml_long_seleccion$summonerName)
@@ -1642,7 +1645,7 @@ ggsave(filename = file.path(ruta_graficos_elo, "Residuos_Ajustados_Clustering_EL
 #hacemos lo mismo para 5 clusters
 # Unir los clusters con el dataset principal
 datos_filtrados_mas_de_50 <- datos_filtrados_mas_de_50 %>%
-  left_join(BD.kml_long_seleccion %>% select(summonerName, clusters_5), by = "summonerName")
+  left_join(BD.kml %>% select(summonerName, clusters_5), by = "summonerName")
 
 # Comprobar si la unión fue exitosa
 head(datos_filtrados_mas_de_50$clusters_5)
@@ -1673,8 +1676,12 @@ heatmap_data2 <- as.data.frame(as.table(residuos_ajustados2))
 heatmap_data2$Var2 <- factor(heatmap_data2$Var2, 
                             levels = c("Challenger", "Grandmaster", "Master", "Diamond", "Platinum"))
 
+heatmap_data2$Var1 <- factor(heatmap_data2$Var1,
+                             levels = c("D", "A", "C", "B", "E"))
 # Reordenar la tabla
+heatmap_data2 <- heatmap_data2[order(heatmap_data2$Var1), ]
 heatmap_data2 <- heatmap_data2[order(heatmap_data2$Var2), ]
+
 
 # Ver el resultado
 print(heatmap_data2)
