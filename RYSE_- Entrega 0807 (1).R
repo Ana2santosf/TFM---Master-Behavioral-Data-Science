@@ -1156,6 +1156,26 @@ BD.kml_long_non_utility_5 <- BD.kml_long_non_utility %>%
   mutate(clusters = clusters_5)  # Clusters con 5 particiones
 
 
+
+
+#CONTAR CUANTOS JUGADORES SE ENCUENTRAN EN CADA CLUSTER
+
+# Contar jugadores únicos en clusters_2
+resumen_clusters_2 <- BD.kml_long_non_utility_2 %>%
+  group_by(clusters_2) %>%
+  summarize(jugadores_unicos = n_distinct(summonerName))
+
+# Contar jugadores únicos en clusters_5
+resumen_clusters_5 <- BD.kml_long_non_utility_2 %>%
+  group_by(clusters_5) %>%
+  summarize(jugadores_unicos = n_distinct(summonerName))
+
+# Ver resultados
+resumen_clusters_2
+resumen_clusters_5
+
+
+
 # CLUSTERING PARA JUGADORES UTILITY
 
 # Formatear datos a wide format para jugadores UTILITY
