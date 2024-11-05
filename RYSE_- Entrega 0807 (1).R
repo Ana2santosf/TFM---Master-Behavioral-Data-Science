@@ -20,7 +20,7 @@ install_and_load <- function(package) {
 
 # Lista de liberias necesarias
 
-libraries <- c("tidyverse", "GGally", "ggplot2", "readxl", "openxlsx", "psych", "pls", "here", "kml3d", "gridExtra", "dplyr",  "nlme", "lme4", "stargazer", "emmeans", "kableExtra", "purrr", "reshape2", "lsr")
+libraries <- c("tidyverse", "GGally", "ggplot2", "readxl", "openxlsx", "psych", "pls", "here", "kml3d", "gridExtra", "dplyr",  "nlme", "lme4", "stargazer", "emmeans", "kableExtra", "purrr", "reshape2", "lsr", "vcd")
 
 
 # Ejecutar la función para cada libreria en la lista
@@ -1651,6 +1651,12 @@ residuos_ajustados <- chisq.test(tabla_contingencia)$stdres
 # Mostrar los residuos ajustados
 print(residuos_ajustados)
 
+# Calcular la V de Cramér para medir la intensidad de la asociación
+v_cramer <- cramersV(tabla_contingencia)
+
+# Mostrar el valor de la V de Cramér
+cat("V de Cramér:", v_cramer)
+
 # Visualizar los residuos ajustados como un heatmap
 library(ggplot2)
 heatmap_data <- as.data.frame(as.table(residuos_ajustados))
@@ -1702,6 +1708,13 @@ residuos_ajustados2 <- chisq.test(tabla_contingencia2)$stdres
 
 # Mostrar los residuos ajustados
 print(residuos_ajustados2)
+
+
+# Calcular la V de Cramér para medir la intensidad de la asociación
+v_cramer2 <- cramersV(tabla_contingencia2)
+
+# Mostrar el valor de la V de Cramér
+cat("V de Cramér:", v_cramer)
 
 # Visualizar los residuos ajustados como un heatmap
 library(ggplot2)
