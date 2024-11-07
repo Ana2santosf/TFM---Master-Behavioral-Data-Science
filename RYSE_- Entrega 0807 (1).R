@@ -1042,6 +1042,18 @@ dev.off()
 BD.kml$clusters_2 <- getClusters(cldGE, 2)
 BD.kml$clusters_5 <- getClusters(cldGE, 5)
 
+
+####CONTAR NUMERO DE JUGADORES EN CADA CLUSTER
+# Contar jugadores en cada cluster para 2 clusters (A y B)
+conteo_clusters_2 <- table(BD.kml_long$clusters_2)
+print(conteo_clusters_2)
+
+# Contar jugadores en cada cluster para 5 clusters (A, B, C, D, E)
+conteo_clusters_5 <- table(BD.kml_long$clusters_5)
+print(conteo_clusters_5)
+
+
+
 # Guardar los resultados de clustering en un archivo
 write.xlsx(BD.kml, file = file.path(ruta_modelizacion, "Clustering_oro_por_minuto_por_jugador.xlsx"), overwrite = TRUE)
 
