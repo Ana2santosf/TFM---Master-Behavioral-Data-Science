@@ -1045,11 +1045,11 @@ BD.kml$clusters_5 <- getClusters(cldGE, 5)
 
 ####CONTAR NUMERO DE JUGADORES EN CADA CLUSTER
 # Contar jugadores en cada cluster para 2 clusters (A y B)
-conteo_clusters_2 <- table(BD.kml_long$clusters_2)
+conteo_clusters_2 <- table(BD.kml$clusters_2)
 print(conteo_clusters_2)
 
 # Contar jugadores en cada cluster para 5 clusters (A, B, C, D, E)
-conteo_clusters_5 <- table(BD.kml_long$clusters_5)
+conteo_clusters_5 <- table(BD.kml$clusters_5)
 print(conteo_clusters_5)
 
 
